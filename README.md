@@ -7,7 +7,7 @@ git init
 git add .
 git commit -m "Exemple"
 git branch -m main
-git remote add origin https://github.com/WaterFox-Cloud/Hylel-Handy-Projet-Jeu.git
+git remote add origin https://github.com/venghour5/projet-CDI
 git push -u origin main
 ```
 - Mettre à jour ton code :
