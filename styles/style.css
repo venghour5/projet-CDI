@@ -15,7 +15,6 @@ header {
   background-color: #000;
   color: #fff;
   padding: 1rem 2rem;
-  justify-content: space-between
 }
 
 .navbar {
@@ -24,7 +23,7 @@ header {
   align-items: center;
 }
 
-.navbar .logo {
+.logo {
   font-size: 1.5rem;
   font-weight: bold;
 }
@@ -33,7 +32,6 @@ nav ul {
   list-style: none;
   display: flex;
   gap: 1rem;
-  text-decoration: none;
 }
 
 nav a {
@@ -42,7 +40,11 @@ nav a {
   font-size: 1rem;
 }
 
-a { color: black; 
+nav a:hover {
+  text-decoration: underline;
+}
+
+a { color: white; 
   text-decoration: underline;
    text-decoration-color: black;
    }
@@ -57,7 +59,6 @@ a { color: black;
   justify-content: space-between;
   width: 100%;
   margin : 0 auto;
-
 }
 
 .input {
@@ -178,6 +179,20 @@ main {
 
 .horaires th {
   background-color: #f1f1f1;
+}
+
+@media (max-width: 768px) {
+  .navbar {
+    flex-direction: column;
+    gap: 10px;
+  }
+  nav ul {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .group {
+    max-width: 100%;
+  }
 }
 
 footer {
