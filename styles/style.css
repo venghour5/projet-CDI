@@ -33,6 +33,29 @@ nav ul {
   display: flex;
   gap: 1rem;
 }
+ul {
+  list-style-type: none;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  position: sticky;
+}
+
+ul li {
+  float: right;
+}
+
+ul li a {
+  display: block;
+  color: white;
+  text-align: center;
+  padding: 14px 16px;
+  text-decoration: none;
+}
+
+ul li a:hover {
+  background-color:rgb(243, 156, 18);
+}
 
 nav a {
   color: #fff;
@@ -123,7 +146,7 @@ main {
 }
 
 .btn {
-  background-color: #f39c12;
+  background-color: rgb(243, 156, 18);
   color: #fff;
   padding: 1rem 2rem;
   border: none;
