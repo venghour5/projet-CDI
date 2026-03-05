@@ -1,0 +1,273 @@
+    /* --- Overlay plein écran --- */
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.6); /* fond sombre */
+  display: none; /* caché par défaut */
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+}
+
+/* Quand on clique sur le lien #menu */
+.overlay:target {
+  display: flex;
+}
+
+/* --- Fenêtre du contenu --- */
+.content {
+  background: white;
+  width: 80%;
+  max-width: 900px;
+  max-height: 90%;
+  overflow-y: auto;
+  padding: 20px;
+  border-radius: 10px;
+  position: relative;
+}
+
+/* --- Bouton fermer --- */
+.close {
+  position: absolute;
+  top: 30px;
+  right: 30px;
+  font-size: 30px;
+  text-decoration: none;
+  color: black;
+}
+
+/* --- Mise en forme des sections --- */
+.page section {
+  margin-bottom: 25px;
+  padding: 15px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+}
+
+.page h1 {
+  margin: 0 0 10px 0;
+  font-size: 22px;
+}
+
+/* --- Zone scroll des avis --- */
+.scrolling {
+  height: 120px;
+  overflow-y: auto;
+  background: #f5f5f5;
+  padding: 10px;
+  border-radius: 6px;
+}
+
+/* --- Bouton 5 étoiles --- */
+.btn-5stars {
+  margin-top: 10px;
+  padding: 10px 15px;
+  background: linear-gradient(135deg, #ff6b6b, #ff4444);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+  width: 100%;
+  transition: all 0.3s ease;
+  box-sizing: border-box;
+}
+
+.btn-5stars:hover {
+  background: linear-gradient(135deg, #ff5252, #ff2222);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* --- Liste des actions --- */
+.actions ul {
+  list-style: none;
+  padding: 0;
+}
+
+.actions li {
+  padding: 12px 15px;
+  border-bottom: 1px solid #ddd;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: #f9f9f9;
+}
+
+.actions li:hover {
+  background: #e3f2fd;
+  transform: translateX(5px);
+  padding-left: 20px;
+  color: #1976d2;
+  font-weight: 500;
+}
+
+.actions li i {
+  margin-right: 12px;
+  font-size: 18px;
+  color: #1976d2;
+}
+
+/* --- Formulaire d'avis --- */
+.form-avis {
+  margin-bottom: 15px;
+  padding: 15px;
+  background: #f5f5f5;
+  border-radius: 6px;
+}
+
+#avis-text {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-family: Arial;
+  margin-bottom: 10px;
+  resize: vertical;
+  box-sizing: border-box;
+}
+
+.rating-input {
+  margin: 10px 0;
+}
+
+.star {
+  font-size: 28px;
+  color: #ddd;
+  cursor: pointer;
+  margin-right: 5px;
+  transition: color 0.2s;
+}
+
+.star:hover,
+.star.active {
+  color: #ffc107;
+}
+
+.btn-submit-avis {
+  width: 100%;
+  padding: 10px;
+  background: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: background 0.3s;
+  box-sizing: border-box;
+}
+
+.btn-submit-avis:hover {
+  background: #45a049;
+}
+
+/* --- Affichage des avis --- */
+.avis-item {
+  padding: 10px;
+  margin-bottom: 8px;
+  background: white;
+  border-left: 4px solid #ffc107;
+  border-radius: 4px;
+}
+
+.avis-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 5px;
+}
+
+.avis-stars {
+  color: #ffc107;
+  font-size: 14px;
+}
+
+.avis-date {
+  font-size: 12px;
+  color: #999;
+}
+
+.avis-text {
+  font-size: 14px;
+  margin: 5px 0 0 0;
+  color: #333;
+}
+/* le code ci-seesus permt de faire une overlay qui parait quand on clique sur un livre, elle contient des sections pour les informations du livre, les avis, les commentaires et une barre d'actions. Le bouton "Les avis à 5 étoiles" permettrait de filtrer les avis affichés dans la zone de scroll. */
+/* le code ci presentt permt de faire une commentaire qui affiche le rating et les avis des utilisateurs ainsi que les commentaires, et une barre d'actions pour localiser le livre, obtenir son numero, l'importer/exporter, l'envoyer, le citer ou l'ajouter à une selection.*/
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: Arial;
+  margin: 0 auto; /* Center website */
+  max-width: 800px; /* Max width */
+  padding: 20px;
+}
+
+.heading {
+  font-size: 25px;
+  margin-right: 25px;
+}
+
+.fa {
+  font-size: 25px;
+}
+
+.checked {
+  color: orange;
+}
+
+/* Three column layout */
+.side {
+  float: left;
+  width: 15%;
+  margin-top: 10px;
+}
+
+.middle {
+  float: left;
+  width: 70%;
+  margin-top: 10px;
+}
+
+/* Place text to the right */
+.right {
+  text-align: right;
+}
+
+/* Clear floats after the columns */
+.row:after {
+  content: "";
+  display: table;
+  clear: both;
+}
+
+/* The bar container */
+.bar-container {
+  width: 100%;
+  background-color: #f1f1f1;
+  text-align: center;
+  color: white;
+}
+
+/* Individual bars */
+.bar-5 {width: 60%; height: 18px; background-color: #04AA6D;}
+.bar-4 {width: 30%; height: 18px; background-color: #2196F3;}
+.bar-3 {width: 10%; height: 18px; background-color: #00bcd4;}
+.bar-2 {width: 4%; height: 18px; background-color: #ff9800;}
+.bar-1 {width: 15%; height: 18px; background-color: #f44336;}
+
+/* Responsive layout - make the columns stack on top of each other instead of next to each other */
+@media (max-width: 400px) {
+  .side, .middle {
+    width: 100%;
+  }
+  /* Hide the right column on small screens */
+  .right {
+    display: none;
+  }
+}
