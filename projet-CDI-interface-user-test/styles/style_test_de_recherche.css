@@ -257,6 +257,7 @@ main {
   flex-wrap: wrap;
 }
 
+
 .footer {
   background-color: #24262b;
   color: #ffffff;
@@ -267,6 +268,22 @@ main {
   width: 25%;
   padding: 0 15px;
 }
+
+.footer-col ul {
+  padding: 0%;
+  list-style: none;
+  margin: 0;
+}
+
+.footer-col ul {
+  display: block;
+}
+
+.footer-col ul li {
+  display: block;
+  width: 100%;
+}
+
 
 .footer-col h4 {
   font-size: 18px;
@@ -282,9 +299,14 @@ main {
   position: absolute;
   left: 0;
   bottom: -10px;
-  background-color: #e91e63;
+  background-color: #e67e22;
   height: 2px;
   width: 50px;
+  transition: width 0.3s ease; 
+}
+
+.footer-col h4:hover::before {
+  width: 100%;
 }
 
 .footer-col ul li:not(:last-child) {
@@ -293,12 +315,12 @@ main {
 
 .footer-col ul li a {
   font-size: 16px;
-  text-transform: capitalize;
   color: #bbbbbb;
   text-decoration: none;
   font-weight: 300;
   display: block;
   transition: all 0.3s ease;
+  text-align: left;
 }
 
 .footer-col ul li a:hover {
@@ -448,6 +470,7 @@ main {
 /* =============================================
    DROPDOWN RECHERCHE EN TEMPS RÉEL
    ============================================= */
+
 #search-results {
   display: none;
   position: absolute;
@@ -516,4 +539,3 @@ main {
   margin-top: 3px;
 }
 .no-result { padding: 14px; color: #888; font-size: 0.86rem; text-align: center; }
-
