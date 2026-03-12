@@ -21,6 +21,7 @@
     </g>
   </svg>
     <input id="query" class="input" type="search" placeholder="Rechercher..." name="searchbar" autocomplete="off" />
+
     <!-- MANQUANT : le dropdown des résultats -->
     <div id="search-results">
       <div class="result-header">Résultats</div>
@@ -137,50 +138,8 @@
 </html>
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 <script>
+  // les livres du CDI (titre, auteur, catégorie, image) - à remplacer par une vraie base de données ou un fichier JSON dans une vraie application :p
     const livresCDI = [
       { titre: "Blue Spring Ride Tome 1", auteur: "Io Sakisaka", categorie: "Manga", image: "../Images/livres/Manga/Blue-Spring-Ride-Tome-1.jpg" },
       { titre: "Blue Spring Ride Tome 2", auteur: "Io Sakisaka", categorie: "Manga", image: "" },
@@ -199,10 +158,12 @@
       { titre: "Sciences et Vie Junior", auteur: "Collectif", categorie: "Magazine", image: "" },
     ];
 
+    // Cela montre comment on peut stocker les informations des livres dans un tableau d'objets JavaScript pour les utiliser dans la recherche et l'affichage des résultats. Dans une vraie application, ces données seraient probablement récupérées depuis une base de données ou un fichier JSON.
     const input = document.getElementById('query');
     const dropdown = document.getElementById('search-results');
     const resultsList = document.getElementById('results-list');
 
+    // les fonctions suivantes permettent de gérer la recherche et l'affichage des résultats dans le dropdown
     function iconeCategorie(cat) {
       const c = cat.toLowerCase();
       if (c.includes('manga')) return '📖';
@@ -252,9 +213,9 @@
             </div>`;
 
           item.addEventListener('click', () => {
-            input.value = livre.titre;
-            dropdown.classList.remove('visible');
+            window.location.href = `livre.html?titre=${encodeURIComponent(livre.titre)}&auteur=${encodeURIComponent(livre.auteur)}&categorie=${encodeURIComponent(livre.categorie)}&image=${encodeURIComponent(livre.image)}`;
           });
+
           resultsList.appendChild(item);
         });
 
