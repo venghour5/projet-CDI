@@ -173,13 +173,13 @@
       if (c.includes('référence')) return '📕';
       return '📗';
     }
-
+    //  cette fonction permet de retourner une icône en fonction de la catégorie du livre pour rendre les résultats plus visuels. On peut bien sûr personnaliser les icônes ou utiliser de vraies images dans une version plus avancée de l'application.
     function highlightText(text, query) {
       if (!query) return text;
       const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
       return text.replace(regex, '<mark style="background:#e8f5a0;border-radius:2px;padding:0 1px;">$1</mark>');
     }
-
+    // la foonction afficherResultats prend la requête de recherche, filtre les livres du CDI en fonction de cette requête, et affiche les résultats dans le dropdown. Elle gère également les cas où il n'y a pas de résultats ou lorsque la requête est trop courte pour éviter d'afficher des résultats non pertinents.
     function afficherResultats(query) {
       const q = query.trim().toLowerCase();
       if (q.length < 2) { dropdown.classList.remove('visible'); return; }
@@ -211,7 +211,7 @@
               <div class="result-meta">${highlightText(livre.auteur, query.trim())}</div>
               <span class="result-tag">${livre.categorie}</span>
             </div>`;
-
+          // la fonction "item.addEventListener" permet de rendre chaque résultat cliquable, redirigeant l'utilisateur vers une page de détails du livre (ici "livre.html") avec les informations du livre passées en paramètres d'URL. Cela permet d'afficher les détails du livre sélectionné sur une nouvelle page. Bien sûr, dans une application réelle, il serait préférable d'utiliser des identifiants uniques pour les livres plutôt que de passer toutes les informations dans l'URL, mais cela illustre le concept de base.
           item.addEventListener('click', () => {
             window.location.href = `livre.html?titre=${encodeURIComponent(livre.titre)}&auteur=${encodeURIComponent(livre.auteur)}&categorie=${encodeURIComponent(livre.categorie)}&image=${encodeURIComponent(livre.image)}`;
           });
@@ -231,7 +231,6 @@
     }
 
     input.addEventListener('input', (e) => afficherResultats(e.target.value));
-
     document.addEventListener('click', (e) => {
       if (!e.target.closest('.group')) dropdown.classList.remove('visible');
     });
