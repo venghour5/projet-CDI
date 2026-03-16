@@ -488,6 +488,7 @@ main {
   Liste déroulante RECHERCHE EN TEMPS RÉEL
    ============================================= */
 
+
 #search-results {
   display: none;
   position: absolute;
@@ -500,6 +501,10 @@ main {
   box-shadow: 0 8px 24px rgba(0,0,0,0.15);
   border: 1px solid #ddd;
   z-index: 999;
+}
+
+#search-results.visible {
+  display: block;  
 }
 
 
