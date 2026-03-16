@@ -134,10 +134,6 @@
   </div>
 </footer>
 
-</body>
-</html>
-
-
 <script>
   // les livres du CDI (titre, auteur, catégorie, image) - à remplacer par une vraie base de données ou un fichier JSON dans une vraie application :p
     const livresCDI = [
@@ -213,7 +209,7 @@
             </div>`;
           // la fonction "item.addEventListener" permet de rendre chaque résultat cliquable, redirigeant l'utilisateur vers une page de détails du livre (ici "livre.html") avec les informations du livre passées en paramètres d'URL. Cela permet d'afficher les détails du livre sélectionné sur une nouvelle page. Bien sûr, dans une application réelle, il serait préférable d'utiliser des identifiants uniques pour les livres plutôt que de passer toutes les informations dans l'URL, mais cela illustre le concept de base.
           item.addEventListener('click', () => {
-            window.location.href = `livre.html?titre=${encodeURIComponent(livre.titre)}&auteur=${encodeURIComponent(livre.auteur)}&categorie=${encodeURIComponent(livre.categorie)}&image=${encodeURIComponent(livre.image)}&disponible=${livre.disponible}&cote=${encodeURIComponent(livre.cote)}`;
+            window.location.href = `livre.html?titre=${encodeURIComponent(livre.titre)}&auteur=${encodeURIComponent(livre.auteur)}&categorie=${encodeURIComponent(livre.categorie)}&image=${encodeURIComponent(livre.image)}`;
           });
 
           resultsList.appendChild(item);
