@@ -482,10 +482,12 @@ main {
   border-radius: 10px;
   box-shadow: 0 8px 24px rgba(0,0,0,0.15);
   border: 1px solid #ddd;
- 
   z-index: 999;
 }
-#search-results.visible { display: block; }
+
+#search-results.visible { 
+  display: block;
+ }
 
 .result-header {
   background: #000;
@@ -504,8 +506,12 @@ main {
   cursor: pointer;
   color: #333;
 }
-.result-item:last-child { border-bottom: none; }
-.result-item:hover { background: #fff8f0; }
+.result-item:last-child { 
+  border-bottom: none;
+ }
+.result-item:hover { 
+  background: #fff8f0;
+ }
 
 .result-cover {
   width: 34px;
@@ -526,9 +532,19 @@ main {
   font-size: 1.2rem;
   flex-shrink: 0;
 }
-.result-info { flex: 1; }
-.result-title { font-weight: bold; font-size: 0.86rem; color: #222; }
-.result-meta { font-size: 0.76rem; color: #666; margin-top: 2px; }
+.result-info {
+  flex: 1;
+ }
+.result-title { 
+  font-weight: bold;
+  font-size: 0.86rem;
+  color: #222; 
+}
+.result-meta { 
+  font-size: 0.76rem;
+  color: #666;
+  margin-top: 2px;
+} 
 .result-tag {
   display: inline-block;
   background: #fff3e0;
@@ -538,4 +554,20 @@ main {
   font-size: 0.7rem;
   margin-top: 3px;
 }
-.no-result { padding: 14px; color: #888; font-size: 0.86rem; text-align: center; }
+.no-result {
+  padding: 14px;
+  color: #888;
+  font-size: 0.86rem;
+   text-align: center;
+   }
+
+/* Page de livre.html */
+
+.btn-retour {
+  font-display: auto;
+  margin: auto;
+  color: #000000;
+  font-size :1.2rem;
+  text-decoration: none;
+
+}
