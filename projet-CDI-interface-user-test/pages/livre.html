@@ -109,13 +109,14 @@
     document.getElementById('auteur').textContent    = 'par ' + (p.get('auteur')    || '—');
     document.getElementById('categorie').textContent = p.get('categorie') || '—';
 
+    // Affichage de la couverture du livre
     const img = document.getElementById('cover');
     if (p.get('image')) {
       img.src = p.get('image');
     } else {
       img.style.display = 'none';
     }
-</script>
 
+</script>
 </body>
 </html>
