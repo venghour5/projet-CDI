@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bienvenue au CDI</title>
+  <link rel="stylesheet" href="../styles/test.css">
+  <link rel="icon" type="image/png" href="../Images/cropped-Lycee-Lavoisier-Meru_Plan-de-travail-1-copie-4.png">
+</head>
+
+<div class="book-img">    
+    <a href="#menu" class="open-overlay"><img src="../Images/img.png" alt="Nouveautés 1"></a>
+    <p>Nouveautés 1</p>
+    </div>
+<div class="ronger-image">
+
+    <!-- overlay du menu quand on clique sur un livre -->
+    <div class="container">
+
+        <div class="overlay" id="menu">
+            <div class="content">
+                <a href="#" class="close">×</a>
+
+                <div class="page">
+
+                    <section class="livre">
+                        <h1>Livre</h1>
+                    </section>
+
+                    <section class="categories">
+                        <h1>Catégories</h1>
+                    </section>
+
+                    <section class="informations-livre">
+                        <h1>Informations du livre</h1>
+                    </section>
+
+                    <section class="avis">
+                        <h1>Avis</h1>
+                        <div class="form-avis">
+                            <textarea id="avis-text" placeholder="Écrivez votre avis..." rows="3"></textarea>
+                            <div class="rating-input">
+                                <span class="star" data-value="1">★</span>
+                                <span class="star" data-value="2">★</span>
+                                <span class="star" data-value="3">★</span>
+                                <span class="star" data-value="4">★</span>
+                                <span class="star" data-value="5">★</span>
+                            </div>
+                            <button class="btn-submit-avis">Soumettre l'avis</button>
+                        </div>
+                        <div class="scrolling" id="avis-container">
+                            <!-- Avis à scroller -->
+                        </div>
+                        <button class="btn-5stars">Les avis à 5 étoiles</button>
+                    </section>
+                    <!-- le commantaire -->
+                                        <!-- Add icon library -->
+                    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+
+                    <span class="heading">User Rating</span>
+                    <span class="fa fa-star checked"></span>
+                    <span class="fa fa-star checked"></span>
+                    <span class="fa fa-star checked"></span>
+                    <span class="fa fa-star checked"></span>
+                    <span class="fa fa-star"></span>
+                    <p>4.1 average based on 254 reviews.</p>
+                    <hr style="border:3px solid #f1f1f1">
+
+                    <div class="row">
+                    <div class="side">
+                        <div>5 star</div>
+                    </div>
+                    <div class="middle">
+                        <div class="bar-container">
+                        <div class="bar-5"></div>
+                        </div>
+                    </div>
+                    <div class="side right">
+                        <div>150</div>
+                    </div>
+                    <div class="side">
+                        <div>4 star</div>
+                    </div>
+                    <div class="middle">
+                        <div class="bar-container">
+                        <div class="bar-4"></div>
+                        </div>
+                    </div>
+                    <div class="side right">
+                        <div>63</div>
+                    </div>
+                    <div class="side">
+                        <div>3 star</div>
+                    </div>
+                    <div class="middle">
+                        <div class="bar-container">
+                        <div class="bar-3"></div>
+                        </div>
+                    </div>
+                    <div class="side right">
+                        <div>15</div>
+                    </div>
+                    <div class="side">
+                        <div>2 star</div>
+                    </div>
+                    <div class="middle">
+                        <div class="bar-container">
+                        <div class="bar-2"></div>
+                        </div>
+                    </div>
+                    <div class="side right">
+                        <div>6</div>
+                    </div>
+                    <div class="side">
+                        <div>1 star</div>
+                    </div>
+                    <div class="middle">
+                        <div class="bar-container">
+                        <div class="bar-1"></div>
+                        </div>
+                    </div>
+                    <div class="side right">
+                        <div>20</div>
+                    </div>
+</div>
+
+                    <section class="actions">
+                        <h1>Barre d'actions</h1>
+                        <ul>
+                            <li><i class="fa fa-map-marker"></i> Localiser le livre</li>
+                            <li><i class="fa fa-barcode"></i> Numéro du livre</li>
+                            <li><i class="fa fa-exchange"></i> Importer / Exporter</li>
+                            <li><i class="fa fa-send"></i> Envoyer</li>
+                            <li><i class="fa fa-quote-left"></i> Citer</li>
+                            <li><i class="fa fa-bookmark"></i> Ajouter à la sélection</li>
+                        </ul>
+                    </section>
+
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+
+    </div>
+
+</div>
+
+<script>
+// Tableau pour stocker les avis en mémoire (pas de localStorage)
+let avisList = [];
+let selectedRating = 0;
+
+// Gestion de la notation au clic
+document.querySelectorAll('.star').forEach(star => {
+    star.addEventListener('click', function() {
+        selectedRating = this.dataset.value;
+        document.querySelectorAll('.star').forEach((s, index) => {
+            if (index < selectedRating) {
+                s.classList.add('active');
+            } else {
+                s.classList.remove('active');
+            }
+        });
+    });
+});
+
+// Soumettre un avis
+document.querySelector('.btn-submit-avis').addEventListener('click', function() {
+    const text = document.getElementById('avis-text').value;
+    if (text.trim() && selectedRating > 0) {
+        avisList.push({
+            text: text,
+            rating: selectedRating,
+            date: new Date().toLocaleDateString('fr-FR')
+        });
+        document.getElementById('avis-text').value = '';
+        selectedRating = 0;
+        document.querySelectorAll('.star').forEach(s => s.classList.remove('active'));
+        afficherAvis();
+    } else {
+        alert('Veuillez écrire un avis et sélectionner une note');
+    }
+});
+
+// Afficher les avis
+function afficherAvis(filtre = 'tous') {
+    const container = document.getElementById('avis-container');
+    container.innerHTML = '';
+    
+    let avisAfficher = avisList;
+    if (filtre === '5stars') {
+        avisAfficher = avisList.filter(a => a.rating === 5);
+    }
+    
+    avisAfficher.forEach(avis => {
+        const div = document.createElement('div');
+        div.className = 'avis-item';
+        let stars = '★'.repeat(avis.rating) + '☆'.repeat(5 - avis.rating);
+        div.innerHTML = `
+            <div class="avis-header">
+                <span class="avis-stars">${stars}</span>
+                <span class="avis-date">${avis.date}</span>
+            </div>
+            <p class="avis-text">${avis.text}</p>
+        `;
+        container.appendChild(div);
+    });
+}
+
+// Bouton filtrer par 5 étoiles
+document.querySelector('.btn-5stars').addEventListener('click', function() {
+    afficherAvis('5stars');
+    this.textContent = this.textContent === 'Les avis à 5 étoiles' ? 'Tous les avis' : 'Les avis à 5 étoiles';
+});
+</script>
