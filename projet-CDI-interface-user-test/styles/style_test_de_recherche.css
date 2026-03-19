@@ -618,3 +618,56 @@ main {
   text-decoration: none;
 
 }
+
+/* page de recherche */
+
+/* Le grand champ du recherche */
+.search-main h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: 2.8rem;
+      margin-bottom: 0.5rem;
+    }
+.search-main h1 span { color: var(--orange); }
+
+.search-main p {
+      color: var(--gris);
+      font-size: 1rem;
+    }
+
+/* Champ de recherche principal */
+.big-search-wrap {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 2.5rem;
+    }
+
+.big-search {
+      position: relative;
+      width: 100%;
+      max-width: 600px;
+    }
+
+.big-search .search-icon {
+      width: 20px;
+      height: 20px;
+      left: 18px;
+      fill: #aaa;
+    }
+.big-input {
+      font-family: 'Arial', sans-serif;
+      width: 100%;
+      height: 56px;
+      padding-left: 3rem;
+      padding-right: 1.5rem;
+      border: 2px solid #e0e0e0;
+      border-radius: 14px;
+      font-size: 1.05rem;
+      color: #111;
+      outline: none;
+      background: #fff;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+      transition: border-color 0.2s;
+    }
+
+.big-input:focus { border-color: var(--orange); }
+.big-input::placeholder { color: #bbb; }

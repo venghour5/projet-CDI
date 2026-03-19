@@ -39,17 +39,57 @@
   </header>
 
 <main class="container">
-
-    <h1>Recherche</h1>
+  <div class="search-main"> 
+    <h1>Recherche un<span>livre</span></h1>
     <p>Entrez le titre, l'auteur ou la catégorie du livre que vous recherchez :</p>
-    <div class="search-bar">  
-      <input id="search-input" type="text" placeholder="Rechercher un livre...">
+  </div>
+
+      <input id="search-input" type="text" placeholder="Rechercher un livre..." autocomplete="off">
       <button id="search-button">Rechercher</button>  
     </div>
     <div id="search-results-container">
+
+        <div class="big-search-wrap">
+    <div class="big-search">
+      <svg viewBox="0 0 24 24" aria-hidden="true" class="search-icon">
+        <path d="M21.53 20.47l-3.66-3.66C19.195 15.24 20 13.214 20 11c0-4.97-4.03-9-9-9s-9 4.03-9 9 4.03 9 9 9c2.215 0 4.24-.804 5.808-2.13l3.66 3.66c.147.146.34.22.53.22s.385-.073.53-.22c.295-.293.295-.767.002-1.06zM3.5 11c0-4.135 3.365-7.5 7.5-7.5s7.5 3.365 7.5 7.5-3.365 7.5-7.5 7.5-7.5-3.365-7.5-7.5z"/>
+      </svg>
+      <input id="query-main" class="big-input" type="search" placeholder="Titre, auteur, catégorie…" autocomplete="off">
+    </div>
       <!-- Les résultats de recherche seront affichés ici -->
     </div>
-    
+
+    <!-- <main>
+  <div class="search-hero">
+    <h1>Rechercher un <span>livre</span></h1>
+    <p>Explorez la collection du CDI — titres, auteurs, catégories</p>
+  </div>
+
+  <div class="big-search-wrap">
+    <div class="big-search">
+      <svg viewBox="0 0 24 24" aria-hidden="true" class="search-icon">
+        <path d="M21.53 20.47l-3.66-3.66C19.195 15.24 20 13.214 20 11c0-4.97-4.03-9-9-9s-9 4.03-9 9 4.03 9 9 9c2.215 0 4.24-.804 5.808-2.13l3.66 3.66c.147.146.34.22.53.22s.385-.073.53-.22c.295-.293.295-.767.002-1.06zM3.5 11c0-4.135 3.365-7.5 7.5-7.5s7.5 3.365 7.5 7.5-3.365 7.5-7.5 7.5-7.5-3.365-7.5-7.5z"/>
+      </svg>
+      <input id="query-main" class="big-input" type="search" placeholder="Titre, auteur, catégorie…" autocomplete="off">
+    </div>
+  </div> -->
+
+    <div class="categories-wrap">
+    <h2>Parcourir par catégorie</h2>
+    <div class="tags">
+      <button class="tag" data-categorie="Tout">Tout</button >
+      <button class="tag" data-categorie="Roman">Roman</button >
+      <button class="tag" data-categorie="Documentaire">Documentaire</button >
+      <button class="tag" data-categorie="Référence">Référence</button >
+      <button class="tag" data-categorie="Manga">Manga</button >
+      <button class="tag" data-categorie="Magazine">Magazine</button >
+
+
+
+    </div>
+  </div>
+    </div>
+  </div>
 
 
 
@@ -66,6 +106,8 @@
 
 
 
+
+</main>
       <footer class="footer">
   <div class="container">
     <div class="row">
