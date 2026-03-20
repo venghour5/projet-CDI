@@ -153,13 +153,13 @@
       const resultsList = document.getElementById('results-list');
 
       // les fonctions suivantes permettent de gérer la recherche et l'affichage des résultats dans le Liste_deroulante
-      function iconeCategorie(cat) {
-        const c = cat.toLowerCase();
-        if (c.includes('manga')) return '📖';
-        if (c.includes('roman')) return '📚';
-        if (c.includes('documentaire')) return '🔬';
-        if (c.includes('magazine')) return '📰';
-        if (c.includes('référence')) return '📕';
+      function iconeCategorie(tag) {
+        const t = tag.toLowerCase();
+        if (t.includes('manga')) return '📖';
+        if (t.includes('roman')) return '📚';
+        if (t.includes('documentaire')) return '🔬';
+        if (t.includes('magazine')) return '📰';
+        if (t.includes('référence')) return '📕';
         return '📗';
       }
       //  cette fonction permet de retourner une icône en fonction de la catégorie du livre pour rendre les résultats plus visuels. On peut bien sûr personnaliser les icônes ou utiliser de vraies images dans une version plus avancée de l'application.
@@ -221,7 +221,7 @@
 
       input.addEventListener('input', (e) => afficherResultats(e.target.value));
       document.addEventListener('click', (e) => {
-        if (!e.target.closest('.group')) Liste_deroulante.classList.remove('visible');
+        if (!e.target.closest('.#search-results')) Liste_deroulante.classList.remove('visible');
       });
 
       input.addEventListener('keydown', (e) => {

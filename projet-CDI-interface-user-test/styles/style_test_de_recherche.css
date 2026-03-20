@@ -633,7 +633,6 @@ main {
 }
 
 /* Champ de recherche principal */
-
 .big-search-wrap {
   display: flex;
   justify-content: center;
@@ -711,7 +710,7 @@ main {
       background: #fff;
       border-radius: 14px;
       overflow: hidden;
-      box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+      box-shadow: 0 2px 12px #00000012;
       text-decoration: none;
       color: inherit;
       transition: transform 0.2s, box-shadow 0.2s;
@@ -772,10 +771,13 @@ main {
 .empty-state {
       text-align: center;
       padding: 3rem;
-      color: var(--gris);
+      color: grey;
 }
 
-.empty-state .emoji { font-size: 3rem; margin-bottom: 1rem; }
+.empty-state .emoji { 
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
 
 mark {
       background: #ffeaa0;
