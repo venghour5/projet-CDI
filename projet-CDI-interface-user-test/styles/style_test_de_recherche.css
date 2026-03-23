@@ -546,7 +546,7 @@ main {
   border-bottom: none;
  }
 .result-item:hover { 
-  background: #fff8f0;
+  background: #f0feff;
  }
 
 .result-cover {
@@ -561,7 +561,7 @@ main {
   width: 34px;
   height: 48px;
   border-radius: 3px;
-  background: #f5e6cc;
+  background: #cceff5;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -588,7 +588,7 @@ main {
 } 
 .result-tag {
   display: inline-block;
-  background: #fff3e0;
+  background: #e0fdff;
   color: #88c6d6;
   border-radius: 10px;
   padding: 1px 8px;
