@@ -128,123 +128,150 @@
 </footer>
 <!-- le script permet faire fonctionner la barre de recherche et les filtres de catégories, ainsi que d'afficher les résultats de recherche dynamiquement. Il gère également l'affichage des résultats et le comptage des résultats trouvés. -->
   <script>
-    // les livres du CDI (titre, auteur, catégorie, image) - à remplacer par une vraie base de données ou un fichier JSON dans une vraie application :p
-      const livresCDI = [
-        { titre: "Blue Spring Ride Tome 1", auteur: "Io Sakisaka", categorie: "Manga", image: "../Images/livres/Manga/Blue-Spring-Ride-Tome-1.jpg" },
-        { titre: "Blue Spring Ride Tome 2", auteur: "Io Sakisaka", categorie: "Manga", image: "" },
-        { titre: "Blue Spring Ride Tome 3", auteur: "Io Sakisaka", categorie: "Manga", image: "" },
-        { titre: "Roman policier", auteur: "Auteur inconnu", categorie: "Roman", image: "../Images/livres/romans/Roman-policier.jpg" },
-        { titre: "Le Code Rose", auteur: "Auteur inconnu", categorie: "Roman historique", image: "../Images/livres/romans/Le-Code-Rose-Grand-Prix-du-Roman-Historique-2023.jpg" },
-        { titre: "Harry Potter à l'école des sorciers", auteur: "J.K. Rowling", categorie: "Roman fantastique", image: "" },
-        { titre: "Harry Potter et la chambre des secrets", auteur: "J.K. Rowling", categorie: "Roman fantastique", image: "" },
-        { titre: "Le Petit Prince", auteur: "Antoine de Saint-Exupéry", categorie: "Roman", image: "" },
-        { titre: "1984", auteur: "George Orwell", categorie: "Roman", image: "" },
-        { titre: "L'Étranger", auteur: "Albert Camus", categorie: "Roman", image: "" },
-        { titre: "Naruto Tome 1", auteur: "Masashi Kishimoto", categorie: "Manga", image: "" },
-        { titre: "Death Note Tome 1", auteur: "Tsugumi Ohba", categorie: "Manga", image: "" },
-        { titre: "L'atlas des records", auteur: "Collectif", categorie: "Documentaire", image: "" },
-        { titre: "Dictionnaire Larousse 2024", auteur: "Larousse", categorie: "Référence", image: "" },
-        { titre: "Sciences et Vie Junior", auteur: "Collectif", categorie: "Magazine", image: "" },
-      ];
-
-      // Cela montre comment on peut stocker les informations des livres dans un tableau d'objets JavaScript pour les utiliser dans la recherche et l'affichage des résultats. Dans une vraie application, ces données seraient probablement récupérées depuis une base de données ou un fichier JSON.
-      const input = document.getElementById('query');
-      const Liste_deroulante = document.getElementById('search-results');
-      const resultsList = document.getElementById('results-list');
-
-      // les fonctions suivantes permettent de gérer la recherche et l'affichage des résultats dans le Liste_deroulante
-      function iconeCategorie(tag) {
-        const t = tag.toLowerCase();
-        if (t.includes('manga')) return '📖';
-        if (t.includes('roman')) return '📚';
-        if (t.includes('documentaire')) return '🔬';
-        if (t.includes('magazine')) return '📰';
-        if (t.includes('référence')) return '📕';
-        return '📗';
-      }
-      //  cette fonction permet de retourner une icône en fonction de la catégorie du livre pour rendre les résultats plus visuels. On peut bien sûr personnaliser les icônes ou utiliser de vraies images dans une version plus avancée de l'application.
-      function highlightText(text, query) {
-        if (!query) return text;
-        const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
-        return text.replace(regex, '<mark style="background:#e8f5a0;border-radius:2px;padding:0 1px;">$1</mark>');
-      }
-      // la foonction afficherResultats prend la requête de recherche, filtre les livres du CDI en fonction de cette requête, et affiche les résultats dans le Liste_deroulante. Elle gère également les cas où il n'y a pas de résultats ou lorsque la requête est trop courte pour éviter d'afficher des résultats non pertinents.
-      function afficherResultats(query) {
-        const q = query.trim().toLowerCase();
-        if (q.length < 2) { Liste_deroulante.classList.remove('visible'); return; }
-
-        const resultats = livresCDI.filter(livre =>
-          livre.titre.toLowerCase().includes(q) ||
-          livre.auteur.toLowerCase().includes(q) ||
-          livre.categorie.toLowerCase().includes(q)
-        );
-
-        resultsList.innerHTML = '';
-
-        if (resultats.length === 0) {
-          resultsList.innerHTML = '<div class="no-result">Aucun livre trouvé pour « ' + query + ' »</div>';
-        } else {
-          resultats.slice(0, 6).forEach(livre => {
-            const item = document.createElement('div');
-            item.className = 'result-item';
-
-            const coverHTML = livre.image
-              ? `<img class="result-cover" src="${livre.image}" alt="${livre.titre}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
-                <div class="result-cover-placeholder" style="display:none;">${iconeCategorie(livre.categorie)}</div>`
-              : `<div class="result-cover-placeholder">${iconeCategorie(livre.categorie)}</div>`;
-
-            item.innerHTML = `
-              ${coverHTML}
-              <div class="result-info">
-                <div class="result-title">${highlightText(livre.titre, query.trim())}</div>
-                <div class="result-meta">${highlightText(livre.auteur, query.trim())}</div>
-                <span class="result-tag">${livre.categorie}</span>
+  const livresCDI = [
+    { titre: "Blue Spring Ride Tome 1", auteur: "Io Sakisaka", categorie: "Manga", image: "../Images/livres/Manga/Blue-Spring-Ride-Tome-1.jpg" },
+    { titre: "Blue Spring Ride Tome 2", auteur: "Io Sakisaka", categorie: "Manga", image: "" },
+    { titre: "Blue Spring Ride Tome 3", auteur: "Io Sakisaka", categorie: "Manga", image: "" },
+    { titre: "Roman policier", auteur: "Auteur inconnu", categorie: "Roman", image: "../Images/livres/romans/Roman-policier.jpg" },
+    { titre: "Le Code Rose", auteur: "Auteur inconnu", categorie: "Roman historique", image: "../Images/livres/romans/Le-Code-Rose-Grand-Prix-du-Roman-Historique-2023.jpg" },
+    { titre: "Harry Potter à l'école des sorciers", auteur: "J.K. Rowling", categorie: "Roman fantastique", image: "" },
+    { titre: "Harry Potter et la chambre des secrets", auteur: "J.K. Rowling", categorie: "Roman fantastique", image: "" },
+    { titre: "Le Petit Prince", auteur: "Antoine de Saint-Exupéry", categorie: "Roman", image: "" },
+    { titre: "1984", auteur: "George Orwell", categorie: "Roman", image: "" },
+    { titre: "L'Étranger", auteur: "Albert Camus", categorie: "Roman", image: "" },
+    { titre: "Naruto Tome 1", auteur: "Masashi Kishimoto", categorie: "Manga", image: "" },
+    { titre: "Death Note Tome 1", auteur: "Tsugumi Ohba", categorie: "Manga", image: "" },
+    { titre: "L'atlas des records", auteur: "Collectif", categorie: "Documentaire", image: "" },
+    { titre: "Dictionnaire Larousse 2024", auteur: "Larousse", categorie: "Référence", image: "" },
+    { titre: "Sciences et Vie Junior", auteur: "Collectif", categorie: "Magazine", image: "" },
+  ];
+ 
+  const inputMain = document.getElementById('query-main');
+  const inputNav  = document.getElementById('query'); /* FIX 3 */
+  const Liste_deroulante = document.getElementById('search-results');
+  const resultsList = document.getElementById('results-list');
+  let categorieActive = "Tout";
+ 
+  function iconeCategorie(tag) {
+    const t = tag.toLowerCase();
+    if (t.includes('manga')) return '📖';
+    if (t.includes('roman')) return '📚';
+    if (t.includes('documentaire')) return '🔬';
+    if (t.includes('magazine')) return '📰';
+    if (t.includes('référence')) return '📕';
+    return '📗';
+  }
+ 
+  function highlightText(text, query) {
+    if (!query) return text;
+    const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+    return text.replace(regex, '<mark style="background:#e8f5a0;border-radius:2px;padding:0 1px;">$1</mark>');
+  }
+ 
+  /* FIX 5 : affiche la grille principale */
+  function afficherGrille(query) {
+    const q = query.trim().toLowerCase();
+    const grille = document.getElementById('results-cards');
+    const compteur = document.getElementById('results-count');
+ 
+    const resultats = livresCDI.filter(livre => {
+      /* FIX 6 : .includes() pour matcher "Roman fantastique" avec le filtre "Roman" */
+      const matchCat = categorieActive === "Tout" || livre.categorie.toLowerCase().includes(categorieActive.toLowerCase());
+      const matchQ   = !q || livre.titre.toLowerCase().includes(q) || livre.auteur.toLowerCase().includes(q) || livre.categorie.toLowerCase().includes(q);
+      return matchCat && matchQ;
+    });
+ 
+    const grid = document.getElementById('results-grid');
+    if (resultats.length > 0) {
+      compteur.textContent = `${resultats.length} résultat(s)`;
+      grid.classList.add('visible');
+    } else {
+      compteur.textContent = '';
+      grid.classList.remove('visible');
+    }
+    grille.innerHTML = resultats.map(livre => {
+      const cover = livre.image
+        ? `<div class="book-card-cover"><img src="${livre.image}" alt="${livre.titre}" onerror="this.parentElement.innerHTML='${iconeCategorie(livre.categorie)}'"></div>`
+        : `<div class="book-card-cover">${iconeCategorie(livre.categorie)}</div>`;
+      return `<div class="book-card" onclick="window.location.href='livre.html?titre=${encodeURIComponent(livre.titre)}&auteur=${encodeURIComponent(livre.auteur)}&categorie=${encodeURIComponent(livre.categorie)}&image=${encodeURIComponent(livre.image)}'">
+                ${cover}
+                <div class="book-card-body">
+                  <div class="book-card-title">${highlightText(livre.titre, query.trim())}</div>
+                  <div class="book-card-author">${highlightText(livre.auteur, query.trim())}</div>
+                  <span class="book-card-tag">${livre.categorie}</span>
+                </div>
               </div>`;
-            // la fonction "item.addEventListener" permet de rendre chaque résultat cliquable, redirigeant l'utilisateur vers une page de détails du livre (ici "livre.html") avec les informations du livre passées en paramètres d'URL. Cela permet d'afficher les détails du livre sélectionné sur une nouvelle page. Bien sûr, dans une application réelle, il serait préférable d'utiliser des identifiants uniques pour les livres plutôt que de passer toutes les informations dans l'URL, mais cela illustre le concept de base.
-            item.addEventListener('click', () => {
-              window.location.href = `livre.html?titre=${encodeURIComponent(livre.titre)}&auteur=${encodeURIComponent(livre.auteur)}&categorie=${encodeURIComponent(livre.categorie)}&image=${encodeURIComponent(livre.image)}`;
-            });
-
-            resultsList.appendChild(item);
-          });
-
-          if (resultats.length > 6) {
-            const plus = document.createElement('div');
-            plus.className = 'no-result';
-            plus.style.color = '#1a7a3a';
-            plus.textContent = `+ ${resultats.length - 6} autre(s) résultat(s)…`;
-            resultsList.appendChild(plus);
-          }
-        }
-        Liste_deroulante.classList.add('visible');
+    }).join('');
+  }
+ 
+  /* FIX 4 : boutons catégorie fonctionnels */
+  document.querySelectorAll('.tag').forEach(btn => {
+    btn.addEventListener('click', () => {
+      categorieActive = btn.dataset.categorie;
+      afficherGrille(inputMain.value);
+    });
+  });
+ 
+  /* dropdown nav */
+  function afficherResultats(query) {
+    const q = query.trim().toLowerCase();
+    if (q.length < 2) { Liste_deroulante.classList.remove('visible'); return; }
+    const resultats = livresCDI.filter(livre =>
+      livre.titre.toLowerCase().includes(q) || livre.auteur.toLowerCase().includes(q) || livre.categorie.toLowerCase().includes(q)
+    );
+    resultsList.innerHTML = '';
+    if (resultats.length === 0) {
+      resultsList.innerHTML = '<div class="no-result">Aucun livre trouvé pour « ' + query + ' »</div>';
+    } else {
+      resultats.slice(0, 6).forEach(livre => {
+        const item = document.createElement('div');
+        item.className = 'result-item';
+        const coverHTML = livre.image
+          ? `<img class="result-cover" src="${livre.image}" alt="${livre.titre}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+             <div class="result-cover-placeholder" style="display:none;">${iconeCategorie(livre.categorie)}</div>`
+          : `<div class="result-cover-placeholder">${iconeCategorie(livre.categorie)}</div>`;
+        item.innerHTML = `${coverHTML}
+          <div class="result-info">
+            <div class="result-title">${highlightText(livre.titre, query.trim())}</div>
+            <div class="result-meta">${highlightText(livre.auteur, query.trim())}</div>
+            <span class="result-tag">${livre.categorie}</span>
+          </div>`;
+        item.addEventListener('click', () => {
+          window.location.href = `livre.html?titre=${encodeURIComponent(livre.titre)}&auteur=${encodeURIComponent(livre.auteur)}&categorie=${encodeURIComponent(livre.categorie)}&image=${encodeURIComponent(livre.image)}`;
+        });
+        resultsList.appendChild(item);
+      });
+      if (resultats.length > 6) {
+        const plus = document.createElement('div');
+        plus.className = 'no-result';
+        plus.style.color = '#1a7a3a';
+        plus.textContent = `+ ${resultats.length - 6} autre(s) résultat(s)…`;
+        resultsList.appendChild(plus);
       }
-
-      input.addEventListener('input', (e) => afficherResultats(e.target.value));
-      document.addEventListener('click', (e) => {
-        if (!e.target.closest('.#search-results')) Liste_deroulante.classList.remove('visible');
-      });
-
-      input.addEventListener('keydown', (e) => {
-        const items = resultsList.querySelectorAll('.result-item');
-        const active = resultsList.querySelector('.result-item.active');
-        let idx = Array.from(items).indexOf(active);
-
-        if (e.key === 'ArrowDown') {
-          e.preventDefault();
-          if (active) active.classList.remove('active');
-          const next = items[Math.min(idx + 1, items.length - 1)];
-          if (next) { next.classList.add('active'); next.style.background = '#e0f0e8'; }
-        } else if (e.key === 'ArrowUp') {
-          e.preventDefault();
-          if (active) active.classList.remove('active');
-          const prev = items[Math.max(idx - 1, 0)];
-          if (prev) { prev.classList.add('active'); prev.style.background = '#e0f0e8'; }
-        } else if (e.key === 'Enter' && active) {
-          active.click();
-        } else if (e.key === 'Escape') {
-          Liste_deroulante.classList.remove('visible');
-        }
-      });
+    }
+    Liste_deroulante.classList.add('visible');
+  }
+ 
+  inputMain.addEventListener('input', (e) => { afficherGrille(e.target.value); });
+  inputNav.addEventListener('input', (e) => afficherResultats(e.target.value)); /* FIX 3 */
+ 
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('#search-results')) Liste_deroulante.classList.remove('visible');
+  });
+ 
+  inputMain.addEventListener('keydown', (e) => {
+    const items = resultsList.querySelectorAll('.result-item');
+    const active = resultsList.querySelector('.result-item.active');
+    let idx = Array.from(items).indexOf(active);
+    if (e.key === 'ArrowDown') { e.preventDefault(); if (active) active.classList.remove('active'); const next = items[Math.min(idx+1,items.length-1)]; if(next){next.classList.add('active');next.style.background='#e0f0e8';} }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); if (active) active.classList.remove('active'); const prev = items[Math.max(idx-1,0)]; if(prev){prev.classList.add('active');prev.style.background='#e0f0e8';} }
+    else if (e.key === 'Enter' && active) { active.click(); }
+    else if (e.key === 'Escape') { Liste_deroulante.classList.remove('visible'); }
+  });
+ 
+  /* Chargement initial de la grille */
+  document.getElementById('results-grid').classList.add('visible');
+  afficherGrille('');
     </script>
   </body>
 </html>
