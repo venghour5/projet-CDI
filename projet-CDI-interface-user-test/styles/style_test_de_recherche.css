@@ -784,3 +784,27 @@ mark {
       border-radius: 2px;
       padding: 0 2px;
 }
+
+/*les boutons de filtre pour les categories des livres dans la page de recherche */
+.tag {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.tag {
+  padding: 6px 16px;
+  border-radius: 20px;
+  border: 1.5px solid #e0e0e0;
+  background: #fff;
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: 'Arial', sans-serif;
+}
+
+.tag:hover, .tag.active {
+  background: #88c6d6;
+  border-color: #88c6d6;
+  color: #fff;
+}
