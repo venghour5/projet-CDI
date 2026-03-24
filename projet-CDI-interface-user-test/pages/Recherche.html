@@ -184,7 +184,7 @@
       const matchQ   = !q || livre.titre.toLowerCase().includes(q) || livre.auteur.toLowerCase().includes(q) || livre.categorie.toLowerCase().includes(q);
       return matchCat && matchQ;
     });
- 
+    /* afficher le nombre de résultats et gérer l'affichage de la grille */
     const grid = document.getElementById('results-grid');
     if (resultats.length > 0) {
       compteur.textContent = `${resultats.length} résultat(s)`;
@@ -276,6 +276,32 @@
   /* Chargement initial de la grille */
   document.getElementById('results-grid').classList.add('visible');
   afficherGrille('');
+  /* gestion de l'état actif des boutons de catégorie */
+  const boutons = document.querySelectorAll('.tag');
+  boutons.forEach(btn => {
+    btn.addEventListener('click', () => {
+        // enlever l'état actif des autres
+        boutons.forEach(b => b.classList.remove('active'));
+
+        // activer celui qu'on clique
+        btn.classList.add('active');
+    });
+});
+/* fonction pour mettre à jour le compteur de résultats */
+function updateResultsCount(nombre) {
+    const compteur = document.getElementById("results-count");
+
+    if (nombre === 0) {
+        compteur.innerHTML = "Aucun résultat trouvé";
+    } else {
+        compteur.innerHTML = `<strong>${nombre}</strong> résultat${nombre > 1 ? "s" : ""} trouvé${nombre > 1 ? "s" : ""}`;
+    }
+}
+/*Cette partie permet mise a jour le livre dans la page livre.html en passant les informations du livre sélectionné via les paramètres d'URL. La fonction `livreURL` génère une URL avec les détails du livre encodés, ce qui permet à la page livre.html de récupérer ces informations et de les afficher correctement.*/Liste_deroulante
+ function livreURL(livre) {
+    return `livre.html?id=${livre.id}&titre=${encodeURIComponent(livre.titre)}&auteur=${encodeURIComponent(livre.auteur)}&categorie=${encodeURIComponent(livre.categorie)}&image=${encodeURIComponent(livre.image)}&note=${livre.note}&avis=${livre.avis}&cote=${encodeURIComponent(livre.cote)}&disponible=${livre.disponible}&synopsis=${encodeURIComponent(livre.synopsis)}`;
+  }
+  
     </script>
   </body>
 </html>
