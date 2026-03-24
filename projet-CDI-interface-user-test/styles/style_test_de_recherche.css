@@ -791,28 +791,30 @@ main {
 }
 
 mark {
-      background: #9debff;
+      background: #ff0000;
       border-radius: 2px;
       padding: 0 2px;
 }
 
 /*les boutons de filtre pour les categories des livres dans la page de recherche */
 
-.tag {
+.tags{
   display: flex;
+  gap: 12px;
   flex-wrap: wrap;
-  gap: 1rem;
 }
-
 .tag {
   padding: 6px 16px;
   border-radius: 20px;
   border: 1.5px solid #e0e0e0;
   background: #fff;
-  font-size: 0.82rem;
   cursor: pointer;
   transition: all 0.2s;
   font-family: 'Arial', sans-serif;
+  flex-wrap: wrap;
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
 }
 
 .tag:hover, .tag.active {
