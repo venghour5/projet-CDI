@@ -632,7 +632,7 @@ main {
   margin-bottom: 2.5rem;
 }
 
-/* Champ de recherche principal */
+/* Champ barre de recherche principal */
 .big-search-wrap {
   display: flex;
   justify-content: center;
@@ -679,9 +679,20 @@ main {
 .big-input::placeholder { 
   color: #bbb;
 }
+/* Les catégories de livres pour le filtrage dans la page de recherche */
+
+.categories-wrap {
+  margin-bottom: 2rem;
+}
+
+.categories-wrap h2 {
+  font-family: 'Arial', serif;
+  font-size: 1.4rem;
+  margin-bottom: 1rem;
+}
 
 /* la grille du recherche pour le vue des resultats des livres */
-
+/* Par défaut, la grille est CACHéE et ne s'affiche que lorsque des résultats sont disponibles */
 #results-grid {
       display: none;
 }
@@ -786,10 +797,11 @@ mark {
 }
 
 /*les boutons de filtre pour les categories des livres dans la page de recherche */
+
 .tag {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: 1rem;
 }
 
 .tag {
@@ -807,4 +819,12 @@ mark {
   background: #88c6d6;
   border-color: #88c6d6;
   color: #fff;
+}
+@media (max-width: 700px) {
+  .navbar { flex-wrap: wrap; height: auto; padding: 1rem 0; gap: 0.5rem; }
+  nav ul { flex-wrap: wrap; justify-content: center; }
+  .input { width: 160px; }
+  .input:focus { width: 200px; }
+  main { margin: 2rem auto; }
+  .search-hero h1 { font-size: 2rem; }
 }
