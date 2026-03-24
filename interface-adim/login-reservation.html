@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Connexion espace CDI</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+    <header class="top-bar">
+        <h1>Gestion du CDI</h1>
+
+        <div class="header-right">
+            <a href="index.html" class="btn-header">Accueil</a>
+        </div>
+    </header>
+
+    <main class="login-container">
+        <form class="login-card" action="#" method="post">
+            <a href="index.html" class="back-link">← Retour à l'accueil</a>
+
+            <h2>Connexion à l'espace Réservation</h2>
+            <p class="login-subtitle">Veuillez saisir vos identifiants</p>
+
+            <div class="input-group">
+                <label for="username">Nom d'utilisateur</label>
+                <input 
+                    type="text" 
+                    id="username" 
+                    name="username" 
+                    placeholder="Entrez votre identifiant"
+                    required
+                >
+            </div>
+
+            <div class="input-group">
+                <label for="password">Mot de passe</label>
+                <input 
+                    type="password" 
+                    id="password" 
+                    name="password" 
+                    placeholder="Entrez votre mot de passe"
+                    required
+                >
+            </div>
+
+            <button type="submit" class="btn-submit">Connexion</button>
+        </form>
+    </main>
+
+</body>
+</html>
