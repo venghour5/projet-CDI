@@ -165,7 +165,7 @@
     if (t.includes('référence')) return '📕';
     return '📗';
   }
- 
+//  cette fonction permet mettre en evidance pour les mots recherchés dans les titres, auteurs et catégories des livres affichés. Elle utilise une expression régulière pour trouver les occurrences du texte de recherche et les enveloppe dans une balise `<mark>` avec un style de surlignage personnalisé.
   function highlightText(text, query) {
     if (!query) return text;
     const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
@@ -179,7 +179,7 @@
     const compteur = document.getElementById('results-count');
  
     const resultats = livresCDI.filter(livre => {
-      /* FIX 6 : .includes() pour matcher "Roman fantastique" avec le filtre "Roman" */
+      // filtrer par catégorie active et par texte de recherche
       const matchCat = categorieActive === "Tout" || livre.categorie.toLowerCase().includes(categorieActive.toLowerCase());
       const matchQ   = !q || livre.titre.toLowerCase().includes(q) || livre.auteur.toLowerCase().includes(q) || livre.categorie.toLowerCase().includes(q);
       return matchCat && matchQ;
@@ -297,7 +297,7 @@ function updateResultsCount(nombre) {
         compteur.innerHTML = `<strong>${nombre}</strong> résultat${nombre > 1 ? "s" : ""} trouvé${nombre > 1 ? "s" : ""}`;
     }
 }
-/*Cette partie permet mise a jour le livre dans la page livre.html en passant les informations du livre sélectionné via les paramètres d'URL. La fonction `livreURL` génère une URL avec les détails du livre encodés, ce qui permet à la page livre.html de récupérer ces informations et de les afficher correctement.*/Liste_deroulante
+/*Cette partie permet mise a jour le livre dans la page livre.html en passant les informations du livre sélectionné via les paramètres d'URL. La fonction `livreURL` génère une URL avec les détails du livre encodés, ce qui permet à la page livre.html de récupérer ces informations et de les afficher correctement.*/
  function livreURL(livre) {
     return `livre.html?id=${livre.id}&titre=${encodeURIComponent(livre.titre)}&auteur=${encodeURIComponent(livre.auteur)}&categorie=${encodeURIComponent(livre.categorie)}&image=${encodeURIComponent(livre.image)}&note=${livre.note}&avis=${livre.avis}&cote=${encodeURIComponent(livre.cote)}&disponible=${livre.disponible}&synopsis=${encodeURIComponent(livre.synopsis)}`;
   }

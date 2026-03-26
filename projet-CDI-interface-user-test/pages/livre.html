@@ -44,8 +44,7 @@
 
 <main>
 
-<div class="chapelure">
-  
+<div class="breadcrumb">
   <a href="recherche.html">Recherche</a>
   <span>›</span>
   <span id="bc-categorie">—</span>
@@ -54,9 +53,10 @@
 </div>
 
 <div class="livre-page">
-<!-- la partie dgauche du livre affiche la couverture du livre et la partie droite affiche les informations du livre (titre, auteur, catégorie) ainsi qu'un bouton pour retourner à la page de recherche -->
-  <div class="livre-gauche">
-        <div class="couverture-wrap" id="couverture-wrap">📖</div>
+
+  <!-- COLONNE DE GAUCHE -->
+  <div class="livre-left">
+    <div class="cover-wrap" id="cover-wrap">📖</div>
 
     <div id="dispo-badge" class="dispo-badge dispo">
       <span class="dot"></span>
@@ -68,23 +68,91 @@
       <strong id="cote-val">—</strong>
     </div>
 
-  <div class="livre-detail">
+    <div class="actions-box">
+      <h3>Actions</h3>
+      <div class="action-item" id="btn-localiser">
+        <!-- les emoji a replvacer par des icones plus appropriées -->
+        <span class="icon">🗺️</span> Localiser le livre
+      </div>
+      <div class="action-item" id="btn-numero">
+        <span class="icon">🔢</span> Numéro du livre
+      </div>
+      <div class="action-item" id="btn-exporter">
+        <span class="icon">📥</span> Importer / Exporter
+      </div>
+      <div class="action-item" id="btn-envoyer">
+        <span class="icon">✉️</span> Envoyer
+      </div>
+      <div class="action-item" id="btn-citer">
+        <span class="icon">💬</span> Citer ce livre
+      </div>
+      <div class="action-item" id="btn-selection">
+        <span class="icon">⭐</span> Ajouter à la sélection
+      </div>
+    </div>
 
-    <div class="livre-content">
+    <a href="recherche.html" class="btn-retour">← Retour à la recherche</a>
 
-      <div class="livre-cover">
 
-        <img id="cover" src="" alt="Couverture du livre">
+      <!-- COLONNE DE DROITE -->
+  <div class="livre-right">
+    <div>
+      <span class="livre-categorie" id="livre-categorie">—</span>
+      <h1 class="livre-titre" id="livre-titre">Chargement…</h1>
+      <p class="livre-auteur" id="livre-auteur">—</p>
 
+      <div class="rating-row">
+        <span class="stars" id="stars-display">☆☆☆☆☆</span>
+        <span class="rating-num" id="note-num">—</span>
+        <span class="rating-count" id="avis-count">— avis</span>
+      </div>
+    </div>
+
+    <div class="synopsis-box" id="synopsis-box">—</div>
+
+    <div>
+      <h2>Informations</h2>
+      <table class="infos-table">
+        <tr><td>Auteur</td><td id="info-auteur">—</td></tr>
+        <tr><td>Catégorie</td><td id="info-cat">—</td></tr>
+        <tr><td>Cote</td><td id="info-cote">—</td></tr>
+        <tr><td>Disponibilité</td><td id="info-dispo">—</td></tr>
+        <tr><td>Langue</td><td>Français</td></tr>
+        <tr><td>Localisation</td><td>CDI — Lycée Lavoisier, Méru</td></tr>
+      </table>
+    </div>
+
+    <!-- SECTION AVIS -->
+    <div class="avis-section">
+      <h2>Avis des lecteurs</h2>
+
+      <div class="rating-dist">
+        <div class="rating-summary">
+          <div>
+            <div class="big-score" id="big-score">—</div>
+            <div class="stars" id="big-stars" style="font-size:1rem;">☆☆☆☆☆</div>
+            <div style="font-size:0.76rem;color:var(--gris)" id="total-avis">— avis</div>
+          </div>
+          <div class="rating-bars" id="bars-container"></div>
+        </div>
       </div>
 
-      <div class="livre-info">
-
-        <h1 id="titre">Titre inconnu</h1>
-        <p id="auteur" class="livre-auteur"></p>
-        <span id="categorie" class="livre-categorie"></span>
-        <a href="test%20de%20recherche.html" class="btn-retour">← Retour à la recherche</a>
+      <div class="avis-filtres">
+        <button class="filtre-btn active" id="filtre-tous">Tous</button>
+        <button class="filtre-btn" id="filtre-5">⭐ 5 étoiles</button>
+        <button class="filtre-btn" id="filtre-4">⭐ 4 étoiles</button>
+        <button class="filtre-btn" id="filtre-3">⭐ 3 étoiles</button>
       </div>
+
+      <div class="avis-list" id="avis-list"></div>
+    </div>
+
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+  </div>
+
     </div>
   </div>
 </div>
@@ -167,3 +235,12 @@
 </script>
 </body>
 </html>
+
+<!-- let livresCDI = [];
+
+fetch("livres.php")
+  .then(res => res.json())
+  .then(data => {
+    livresCDI = data;
+    afficherGrille('');
+  }); -->
