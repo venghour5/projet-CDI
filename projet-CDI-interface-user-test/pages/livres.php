@@ -1,8 +1,10 @@
 <?php
 include "connexion.php";
 
-$reponse = $pdo->query("SELECT * FROM livres");
-$livres = $reponse->fetchAll(PDO::FETCH_ASSOC);
+$id = $_GET['id'];
 
-echo json_encode($livres);
+$sql = "SELECT * FROM livres WHERE id = ?";
+$stmt = $pdo->prepare($sql);
+$stmt->execute([$id]);
+$livre = $stmt->fetch(PDO::FETCH_ASSOC);
 ?>

@@ -200,15 +200,15 @@
   var urlParams = new URLSearchParams(window.location.search) // URLSearchParams est une fonction qui parse les paramètres d'une URL et permet de les lire facilement
 
   // on lit chaque parametre un par un
-  var titreLivre = urlParams.get('titre')
-  var auteurLivre = urlParams.get('auteur')
-  var categorieLivre = urlParams.get('categorie')
-  var imageLivre = urlParams.get('image')
-  var noteLivre = urlParams.get('note')
-  var avisLivre = urlParams.get('avis')
-  var coteLivre = urlParams.get('cote')
-  var disponibleLivre = urlParams.get('disponible')
-  var synopsisLivre = urlParams.get('synopsis')
+  var titreLivre = "<?php echo $livre['titre']; ?>";
+  var auteurLivre = "<?php echo $livre['auteur']; ?>";
+  var categorieLivre = "<?php echo $livre['categorie']; ?>";
+  var imageLivre = "<?php echo $livre['image']; ?>";
+  var noteLivre = "<?php echo $livre['note']; ?>";
+  var avisLivre = "<?php echo $livre['avis']; ?>";
+  var coteLivre = "<?php echo $livre['cote']; ?>";
+  var synopsisLivre = "<?php echo $livre['synopsis']; ?>";
+  var disponibleLivre = "<?php echo $livre['disponible']; ?>";
 
   // si jamais un parametre est vide on met une valeur par defaut
   if (titreLivre == null) {

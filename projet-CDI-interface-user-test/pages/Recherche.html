@@ -132,23 +132,14 @@
 </footer>
 <!-- le script permet faire fonctionner la barre de recherche et les filtres de catégories, ainsi que d'afficher les résultats de recherche dynamiquement. Il gère également l'affichage des résultats et le comptage des résultats trouvés. -->
   <script>
-  const livresCDI = [
-    { titre: "Blue Spring Ride Tome 1", auteur: "Io Sakisaka", categorie: "Manga", image: "../Images/livres/Manga/Blue-Spring-Ride-Tome-1.jpg" },
-    { titre: "Blue Spring Ride Tome 2", auteur: "Io Sakisaka", categorie: "Manga", image: "" },
-    { titre: "Blue Spring Ride Tome 3", auteur: "Io Sakisaka", categorie: "Manga", image: "" },
-    { titre: "Roman policier", auteur: "Auteur inconnu", categorie: "Roman", image: "../Images/livres/romans/Roman-policier.jpg" },
-    { titre: "Le Code Rose", auteur: "Auteur inconnu", categorie: "Roman historique", image: "../Images/livres/romans/Le-Code-Rose-Grand-Prix-du-Roman-Historique-2023.jpg" },
-    { titre: "Harry Potter à l'école des sorciers", auteur: "J.K. Rowling", categorie: "Roman fantastique", image: "" },
-    { titre: "Harry Potter et la chambre des secrets", auteur: "J.K. Rowling", categorie: "Roman fantastique", image: "" },
-    { titre: "Le Petit Prince", auteur: "Antoine de Saint-Exupéry", categorie: "Roman", image: "" },
-    { titre: "1984", auteur: "George Orwell", categorie: "Roman", image: "" },
-    { titre: "L'Étranger", auteur: "Albert Camus", categorie: "Roman", image: "" },
-    { titre: "Naruto Tome 1", auteur: "Masashi Kishimoto", categorie: "Manga", image: "" },
-    { titre: "Death Note Tome 1", auteur: "Tsugumi Ohba", categorie: "Manga", image: "" },
-    { titre: "L'atlas des records", auteur: "Collectif", categorie: "Documentaire", image: "" },
-    { titre: "Dictionnaire Larousse 2024", auteur: "Larousse", categorie: "Référence", image: "" },
-    { titre: "Sciences et Vie Junior", auteur: "Collectif", categorie: "Magazine", image: "" },
-  ];
+ let livresCDI = [];
+
+fetch("livres.php")
+  .then(res => res.json())
+  .then(data => {
+    livresCDI = data;
+    afficherGrille('');
+  });
  
   const inputMain = document.getElementById('query-main');
   const inputNav  = document.getElementById('query'); /* FIX 3 */
@@ -197,7 +188,7 @@
       const cover = livre.image
         ? `<div class="book-card-cover"><img src="${livre.image}" alt="${livre.titre}" onerror="this.parentElement.innerHTML='${iconeCategorie(livre.categorie)}'"></div>`
         : `<div class="book-card-cover">${iconeCategorie(livre.categorie)}</div>`;
-      return `<div class="book-card" onclick="window.location.href='livre.html?titre=${encodeURIComponent(livre.titre)}&auteur=${encodeURIComponent(livre.auteur)}&categorie=${encodeURIComponent(livre.categorie)}&image=${encodeURIComponent(livre.image)}'">
+      return `<div class="book-card" onclick="window.location.href='livre.php?id=' + livre.id;">
                 ${cover}
                 <div class="book-card-body">
                   <div class="book-card-title">${highlightText(livre.titre, query.trim())}</div>
