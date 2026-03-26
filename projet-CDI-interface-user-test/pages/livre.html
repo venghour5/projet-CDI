@@ -42,8 +42,6 @@
       </div>
   </header>
 
-<main>
-
 <div class="breadcrumb">
   <a href="recherche.html">Recherche</a>
   <span>›</span>
@@ -71,7 +69,6 @@
     <div class="actions-box">
       <h3>Actions</h3>
       <div class="action-item" id="btn-localiser">
-        <!-- les emoji a replvacer par des icones plus appropriées -->
         <span class="icon">🗺️</span> Localiser le livre
       </div>
       <div class="action-item" id="btn-numero">
@@ -90,9 +87,11 @@
         <span class="icon">⭐</span> Ajouter à la sélection
       </div>
     </div>
-
     <a href="recherche.html" class="btn-retour">← Retour à la recherche</a>
 
+  </div>
+  <!-- COLONNE DE DROITE -->
+  <div class="livre-right">
 
       <!-- COLONNE DE DROITE -->
   <div class="livre-right">
@@ -153,30 +152,6 @@
 <div class="toast" id="toast"></div>
   </div>
 
-    </div>
-  </div>
-</div>
-</main>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
  <footer class="footer">
   <div class="container">
     <div class="row">
@@ -217,20 +192,466 @@
 </footer>
 
 <script>
-    // ce script permet de recuperer les informations du livre depuis l'url et de les afficher dans la page
-    const p = new URLSearchParams(window.location.search);
+  // ============================================
+  // on recupere ce qui est dans l'url
+  // par exemple : ?titre=Harry+Potter&auteur=Rowling
+  // ============================================
 
-    document.getElementById('titre').textContent     = p.get('titre')     || 'Titre inconnu';
-    document.getElementById('auteur').textContent    = 'par ' + (p.get('auteur')    || '—');
-    document.getElementById('categorie').textContent = p.get('categorie') || '—';
+  var urlParams = new URLSearchParams(window.location.search) // URLSearchParams est une fonction qui parse les paramètres d'une URL et permet de les lire facilement
 
-    // Affichage de la couverture du livre
-    const img = document.getElementById('cover');
-    if (p.get('image')) {
-      img.src = p.get('image');
-    } else {
-      img.style.display = 'none';
+  // on lit chaque parametre un par un
+  var titreLivre = urlParams.get('titre')
+  var auteurLivre = urlParams.get('auteur')
+  var categorieLivre = urlParams.get('categorie')
+  var imageLivre = urlParams.get('image')
+  var noteLivre = urlParams.get('note')
+  var avisLivre = urlParams.get('avis')
+  var coteLivre = urlParams.get('cote')
+  var disponibleLivre = urlParams.get('disponible')
+  var synopsisLivre = urlParams.get('synopsis')
+
+  // si jamais un parametre est vide on met une valeur par defaut
+  if (titreLivre == null) {
+    titreLivre = 'Livre inconnu'
+  }
+  if (auteurLivre == null) {
+    auteurLivre = 'Auteur inconnu'
+  }
+  if (categorieLivre == null) {
+    categorieLivre = 'Autre'
+  }
+  if (imageLivre == null) {
+    imageLivre = ''
+  }
+  if (noteLivre == null) {
+    noteLivre = 4.0
+  } else {
+    noteLivre = parseFloat(noteLivre) // on convertit en nombre a virgule
+  }
+  if (avisLivre == null) {
+    avisLivre = 0
+  } else {
+    avisLivre = parseInt(avisLivre) // on convertit en nombre entier
+  }
+  if (coteLivre == null) {
+    coteLivre = '—'
+  }
+  if (synopsisLivre == null) {
+    synopsisLivre = 'Aucun synopsis disponible.'
+  }
+
+  // pour "disponible" c'est vrai sauf si on nous envoie "false"
+  var estDisponible = true
+  if (disponibleLivre == 'false') {
+    estDisponible = false
+  }
+
+
+  // ============================================
+  // on met le titre de la page dans l'onglet du navigateur
+  // ============================================
+  document.title = titreLivre + ' — CDI Lycée'
+
+
+  // ============================================
+  // on remplit le fil d'ariane (le chemin en haut de la page ou le livre est dans la categorie "Roman > Fantastique" par exemple)
+  // ============================================
+  document.getElementById('bc-categorie').textContent = categorieLivre
+  document.getElementById('bc-titre').textContent = titreLivre
+
+
+  // ============================================
+  // on remplit les infos principales du livre
+  // ============================================
+  document.getElementById('livre-titre').textContent = titreLivre
+  document.getElementById('livre-auteur').textContent = 'par ' + auteurLivre
+  document.getElementById('livre-categorie').textContent = categorieLivre
+  document.getElementById('synopsis-box').textContent = synopsisLivre
+  document.getElementById('cote-val').textContent = coteLivre
+
+  // le tableau d'infos en bas
+  document.getElementById('info-auteur').textContent = auteurLivre
+  document.getElementById('info-cat').textContent = categorieLivre
+  document.getElementById('info-cote').textContent = coteLivre
+
+
+  // ============================================
+  // gestion de la couverture du livre
+  // ============================================
+
+  var coverDiv = document.getElementById('cover-wrap')
+
+  if (imageLivre != '') {
+    // si on a une image on la met
+    var imgElement = document.createElement('img')
+    imgElement.src = imageLivre
+    imgElement.alt = titreLivre
+
+    // si l'image ne charge pas on met un emoji a la place
+    imgElement.onerror = function() {
+      coverDiv.innerHTML = getEmoji(categorieLivre)
     }
+
+    coverDiv.innerHTML = ''
+    coverDiv.appendChild(imgElement)
+
+  } else {
+    // pas d'image donc on met juste un emoji selon la categorie
+    coverDiv.innerHTML = getEmoji(categorieLivre)
+  }
+
+  // cette fonction renvoie un emoji selon la categorie
+  function getEmoji(categorie) {
+    var cat = categorie.toLowerCase()
+
+    if (cat.includes('manga')) {
+      return '📖'
+    }
+    if (cat.includes('roman')) {
+      return '📚'
+    }
+    if (cat.includes('documentaire')) {
+      return '🔬'
+    }
+    if (cat.includes('magazine')) {
+      return '📰'
+    }
+    if (cat.includes('référence')) {
+      return '📕'
+    }
+
+    // si on sait pas on met ca par defaut
+    return '📗'
+  }
+
+
+  // ============================================
+  // disponibilite du livre (dispo ou pas)
+  // ============================================
+
+  var badgeElement = document.getElementById('dispo-badge')
+  var texteDispoElement = document.getElementById('dispo-text')
+  var infoDispoElement = document.getElementById('info-dispo')
+
+  if (estDisponible == true) {
+    badgeElement.className = 'dispo-badge dispo'
+    texteDispoElement.textContent = 'Disponible'
+    infoDispoElement.textContent = '✅ Disponible en CDI'
+  } else {
+    badgeElement.className = 'dispo-badge indispo'
+    texteDispoElement.textContent = 'Indisponible'
+    infoDispoElement.textContent = '❌ Emprunté actuellement'
+  }
+
+
+  // ============================================
+  // affichage des etoiles (ex: 4.5 → ★★★★½☆)
+  // ============================================
+
+  function afficherEtoiles(note) {
+    var resultat = ''
+    var noteEntiere = Math.floor(note) // partie entiere ex: 4.5 → 4
+    var noteDecimale = note - noteEntiere // partie decimale ex: 4.5 → 0.5
+
+    // on ajoute une etoile pleine pour chaque point entier
+    var i = 0
+    while (i < noteEntiere) {
+      resultat = resultat + '★'
+      i = i + 1
+    }
+
+    // si la decimale est >= 0.5 on ajoute une demi etoile
+    if (noteDecimale >= 0.5) {
+      resultat = resultat + '½'
+    }
+
+    // on complete jusqu'a 5 avec des etoiles vides
+    var nbEtoiles = resultat.length
+    while (nbEtoiles < 5) {
+      resultat = resultat + '☆'
+      nbEtoiles = nbEtoiles + 1
+    }
+
+    return resultat
+  }
+
+  // on met les etoiles et la note dans la page
+  var etoilesTexte = afficherEtoiles(noteLivre)
+
+  document.getElementById('stars-display').textContent = etoilesTexte
+  document.getElementById('note-num').textContent = noteLivre.toFixed(1)
+  document.getElementById('avis-count').textContent = avisLivre + ' avis'
+
+  // pareil pour le gros score en bas
+  document.getElementById('big-score').textContent = noteLivre.toFixed(1)
+  document.getElementById('big-stars').textContent = etoilesTexte
+  document.getElementById('total-avis').textContent = avisLivre + ' avis'
+
+
+  // ============================================
+  // les barres de repartition des notes
+  // (on fait semblant d'avoir les vraies données)
+  // ============================================
+
+  var nbTotal = avisLivre
+
+  // on repartit les avis sur les 5 niveaux d'etoiles (c'est approximatif)
+  var nb5etoiles = Math.round(nbTotal * 0.55)
+  var nb4etoiles = Math.round(nbTotal * 0.25)
+  var nb3etoiles = Math.round(nbTotal * 0.10)
+  var nb2etoiles = Math.round(nbTotal * 0.05)
+  var nb1etoile  = Math.round(nbTotal * 0.05)
+
+  var conteneurBarres = document.getElementById('bars-container')
+
+  // barre 5 etoiles
+  var pourcent5 = 0
+  if (nbTotal > 0) {
+    pourcent5 = Math.round(nb5etoiles / nbTotal * 100)
+  }
+  conteneurBarres.innerHTML = conteneurBarres.innerHTML + '<div class="bar-row"><span class="bar-label">5 ★</span><div class="bar-track"><div class="bar-fill" style="width:' + pourcent5 + '%"></div></div><span class="bar-count">' + nb5etoiles + '</span></div>'
+
+  // barre 4 etoiles
+  var pourcent4 = 0
+  if (nbTotal > 0) {
+    pourcent4 = Math.round(nb4etoiles / nbTotal * 100)
+  }
+  conteneurBarres.innerHTML = conteneurBarres.innerHTML + '<div class="bar-row"><span class="bar-label">4 ★</span><div class="bar-track"><div class="bar-fill" style="width:' + pourcent4 + '%"></div></div><span class="bar-count">' + nb4etoiles + '</span></div>'
+
+  // barre 3 etoiles
+  var pourcent3 = 0
+  if (nbTotal > 0) {
+    pourcent3 = Math.round(nb3etoiles / nbTotal * 100)
+  }
+  conteneurBarres.innerHTML = conteneurBarres.innerHTML + '<div class="bar-row"><span class="bar-label">3 ★</span><div class="bar-track"><div class="bar-fill" style="width:' + pourcent3 + '%"></div></div><span class="bar-count">' + nb3etoiles + '</span></div>'
+
+  // barre 2 etoiles
+  var pourcent2 = 0
+  if (nbTotal > 0) {
+    pourcent2 = Math.round(nb2etoiles / nbTotal * 100)
+  }
+  conteneurBarres.innerHTML = conteneurBarres.innerHTML + '<div class="bar-row"><span class="bar-label">2 ★</span><div class="bar-track"><div class="bar-fill" style="width:' + pourcent2 + '%"></div></div><span class="bar-count">' + nb2etoiles + '</span></div>'
+
+  // barre 1 etoile
+  var pourcent1 = 0
+  if (nbTotal > 0) {
+    pourcent1 = Math.round(nb1etoile / nbTotal * 100)
+  }
+  conteneurBarres.innerHTML = conteneurBarres.innerHTML + '<div class="bar-row"><span class="bar-label">1 ★</span><div class="bar-track"><div class="bar-fill" style="width:' + pourcent1 + '%"></div></div><span class="bar-count">' + nb1etoile + '</span></div>'
+
+
+  // ============================================
+  // les avis des lecteurs (données de test)
+  // ============================================
+
+  // une liste d'avis qu'on a mis a la main pour tester
+  var tousLesAvis = []
+
+  var avis1 = {}
+  avis1.utilisateur = 'Marie L.'
+  avis1.note = 5
+  avis1.date = 'Janvier 2025'
+  avis1.texte = "Absolument magnifique, je l'ai lu d'une traite ! Je le recommande à tous."
+  tousLesAvis.push(avis1)
+
+  var avis2 = {}
+  avis2.utilisateur = 'Thomas B.'
+  avis2.note = 4
+  avis2.date = 'Novembre 2024'
+  avis2.texte = "Très bien écrit, l'histoire est prenante. Quelques longueurs au milieu mais ça vaut le coup."
+  tousLesAvis.push(avis2)
+
+  var avis3 = {}
+  avis3.utilisateur = 'Léa M.'
+  avis3.note = 5
+  avis3.date = 'Octobre 2024'
+  avis3.texte = "Un de mes préférés du CDI, je l'ai emprunté deux fois !"
+  tousLesAvis.push(avis3)
+
+  var avis4 = {}
+  avis4.utilisateur = 'Hugo R.'
+  avis4.note = 3
+  avis4.date = 'Septembre 2024'
+  avis4.texte = "Pas mal mais j'ai trouvé la fin un peu décevante. Dans l'ensemble une bonne lecture."
+  tousLesAvis.push(avis4)
+
+  var avis5 = {}
+  avis5.utilisateur = 'Camille D.'
+  avis5.note = 5
+  avis5.date = 'Mars 2024'
+  avis5.texte = "Coup de cœur absolu. L'écriture est fluide et les personnages très attachants."
+  tousLesAvis.push(avis5)
+
+  var avis6 = {}
+  avis6.utilisateur = 'Antoine V.'
+  avis6.note = 4
+  avis6.date = 'Février 2024'
+  avis6.texte = "Bonne lecture, je recommande pour les amateurs du genre."
+  tousLesAvis.push(avis6)
+
+
+  // cette fonction affiche une liste d'avis dans la page
+  function afficherAvis(listeAvis) {
+    var conteneur = document.getElementById('avis-list')
+    conteneur.innerHTML = '' // on vide d'abord
+
+    if (listeAvis.length == 0) {
+      conteneur.innerHTML = '<div style="color:var(--gris);font-size:0.88rem;padding:1rem 0;">Aucun avis pour ce filtre.</div>'
+      return
+    }
+
+    // on parcourt tous les avis et on cree une carte pour chacun
+    var j = 0
+    while (j < listeAvis.length) {
+      var avisActuel = listeAvis[j]
+
+      // on construit les etoiles de cet avis
+      var etoilesAvis = ''
+      var k = 0
+      while (k < avisActuel.note) {
+        etoilesAvis = etoilesAvis + '★'
+        k = k + 1
+      }
+      while (k < 5) {
+        etoilesAvis = etoilesAvis + '☆'
+        k = k + 1
+      }
+
+      // on cree le html de la carte
+      var carteHtml = '<div class="avis-card">'
+      carteHtml = carteHtml + '<div class="avis-header">'
+      carteHtml = carteHtml + '<div>'
+      carteHtml = carteHtml + '<span class="avis-user">' + avisActuel.utilisateur + '</span>'
+      carteHtml = carteHtml + '<div class="avis-stars">' + etoilesAvis + '</div>'
+      carteHtml = carteHtml + '</div>'
+      carteHtml = carteHtml + '<span class="avis-date">' + avisActuel.date + '</span>'
+      carteHtml = carteHtml + '</div>'
+      carteHtml = carteHtml + '<p class="avis-text">' + avisActuel.texte + '</p>'
+      carteHtml = carteHtml + '</div>'
+
+      conteneur.innerHTML = conteneur.innerHTML + carteHtml
+
+      j = j + 1
+    }
+  }
+
+  // on affiche tous les avis au debut
+  afficherAvis(tousLesAvis)
+
+
+  // ============================================
+  // boutons filtres des avis
+  // ============================================
+
+  document.getElementById('filtre-tous').onclick = function() {
+    // enlever le style actif sur tous les boutons
+    document.getElementById('filtre-tous').className = 'filtre-btn active'
+    document.getElementById('filtre-5').className = 'filtre-btn'
+    document.getElementById('filtre-4').className = 'filtre-btn'
+    document.getElementById('filtre-3').className = 'filtre-btn'
+    // afficher tous les avis
+    afficherAvis(tousLesAvis)
+  }
+
+  document.getElementById('filtre-5').onclick = function() {
+    document.getElementById('filtre-tous').className = 'filtre-btn'
+    document.getElementById('filtre-5').className = 'filtre-btn active'
+    document.getElementById('filtre-4').className = 'filtre-btn'
+    document.getElementById('filtre-3').className = 'filtre-btn'
+    // garder seulement les avis avec 5 etoiles
+    var avis5etoiles = []
+    var i = 0
+    while (i < tousLesAvis.length) {
+      if (tousLesAvis[i].note == 5) {
+        avis5etoiles.push(tousLesAvis[i])
+      }
+      i = i + 1
+    }
+    afficherAvis(avis5etoiles)
+  }
+
+  document.getElementById('filtre-4').onclick = function() {
+    document.getElementById('filtre-tous').className = 'filtre-btn'
+    document.getElementById('filtre-5').className = 'filtre-btn'
+    document.getElementById('filtre-4').className = 'filtre-btn active'
+    document.getElementById('filtre-3').className = 'filtre-btn'
+    // garder seulement les avis avec 4 etoiles
+    var avis4etoiles = []
+    var i = 0
+    while (i < tousLesAvis.length) {
+      if (tousLesAvis[i].note == 4) {
+        avis4etoiles.push(tousLesAvis[i])
+      }
+      i = i + 1
+    }
+    afficherAvis(avis4etoiles)
+  }
+
+  document.getElementById('filtre-3').onclick = function() {
+    document.getElementById('filtre-tous').className = 'filtre-btn'
+    document.getElementById('filtre-5').className = 'filtre-btn'
+    document.getElementById('filtre-4').className = 'filtre-btn'
+    document.getElementById('filtre-3').className = 'filtre-btn active'
+    // garder seulement les avis avec 3 etoiles
+    var avis3etoiles = []
+    var i = 0
+    while (i < tousLesAvis.length) {
+      if (tousLesAvis[i].note == 3) {
+        avis3etoiles.push(tousLesAvis[i])
+      }
+      i = i + 1
+    }
+    afficherAvis(avis3etoiles)
+  }
+
+
+  // ============================================
+  // la petite notification qui apparait en bas (toast)
+  // ============================================
+
+  function afficherToast(message) {
+    var toastElement = document.getElementById('toast')
+    toastElement.textContent = message
+    toastElement.className = 'toast show' // on l'affiche
+    // apres 2.8 secondes on le cache
+    setTimeout(function() {
+      toastElement.className = 'toast'
+    }, 2800)
+  }
+
+
+  // ============================================
+  // les boutons d'actions
+  // ============================================
+
+  document.getElementById('btn-localiser').onclick = function() {
+    var cote = document.getElementById('cote-val').textContent
+    afficherToast('📍 Localisation : rayon ' + cote)
+  }
+
+  document.getElementById('btn-numero').onclick = function() {
+    var cote = document.getElementById('cote-val').textContent
+    afficherToast('📋 Numéro : ' + cote)
+  }
+
+  document.getElementById('btn-exporter').onclick = function() {
+    afficherToast('📥 Export en cours…')
+  }
+
+  document.getElementById('btn-envoyer').onclick = function() {
+    afficherToast('✉️ Lien copié dans le presse-papier !')
+  }
+
+  document.getElementById('btn-citer').onclick = function() {
+    // on fabrique la citation avec les infos du livre
+    var citation = titreLivre + ' — ' + auteurLivre + ' (CDI Lycée Lavoisier, Méru, cote : ' + coteLivre + ')'
+    navigator.clipboard.writeText(citation)
+    afficherToast('📋 Citation copiée : ' + citation)
+  }
+
+  document.getElementById('btn-selection').onclick = function() {
+    afficherToast('✅ Ajouté à votre sélection !')
+  }
 
 </script>
 </body>
