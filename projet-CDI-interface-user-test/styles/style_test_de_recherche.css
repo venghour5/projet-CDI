@@ -834,7 +834,7 @@ mark {
 }
 
 /* page du livre */
-
+/* la section principale de la pagedu livre  */
 .livre-page {
   width: 100%;
   height: auto;
@@ -842,14 +842,21 @@ mark {
   align-items: center;
   justify-content: center;
   font-size: 0.5rem;
+  max-width: 1100px;
+  margin: 2rem auto 4rem;
+  padding: 0 2rem;
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 3rem;
 }
+/* la fleche de retour pour revenir a la page de recherche */
 
 .breadcrumb {
   max-width: 1100px;
   margin: 1.5rem auto 0;
   padding: 0 2rem;
   font-size: 0.82rem;
-  color: grey;
+  color: rgb(128, 128, 128);
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -863,15 +870,7 @@ mark {
   text-decoration: underline;
  }
 
-.livre-page {
-  max-width: 1100px;
-  margin: 2rem auto 4rem;
-  padding: 0 2rem;
-  display: grid;
-  grid-template-columns: 280px 1fr;
-  gap: 3rem;
-}
-
+ /* la partie gauche de la page du livre qui contient la couverture et les informations principales du livre */
 .livre-left {
   display: flex;
   flex-direction:
@@ -895,28 +894,281 @@ mark {
   align-items: center;
   justify-content: center;
   font-size: 5rem;
+
 }
+/* la couverture du livre dans la page du livre */
 .dispo-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 8px 16px;
-      border-radius: 20px;
-      font-size: 0.85rem;
-      font-weight: 500;
-      width: fit-content;
-    }
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  width: fit-content;
+}
+/* les style de la disponibilité du livre dans la page du livre */
+.dispo-badge.dispo { 
+  background: #e8f5e9;
+   color: #2e7d32;
+ }
+.dispo-badge.indispo { 
+  background: #fce4ec;
+   color: #c62828;
+   }
+.dispo-badge .dot { 
+  width: 8px; 
+  height: 8px; 
+  border-radius: 50%;
+ }
+.dispo-badge.dispo .dot {
+   background: #43a047;
+   }
+.dispo-badge.indispo .dot {
+   background: #e53935;
+   }
+/* la cote du livre dans la page du livre */
+.cote-box {
+  background: #f0f0f0;
+  border-radius: 10px;
+  padding: 12px 16px;
+  font-size: 0.82rem;
+  color: #aeaeae;
+}
+.cote-box strong { 
+color: black;
+display: block;
+font-size: 1rem;
+font-family: 'Arial', monospace;
+margin-top: 4px;
+}
+/* la barre deroulante pour les actions possibles sur le livre dans la page du livre */
+.actions-box {
+background: #fff;
+border: 1.5px solid #e0e0e0;
+border-radius: 14px;
+overflow: hidden;
+}
 
-    .dispo-badge.dispo { background: #e8f5e9; color: #2e7d32; }
-    .dispo-badge.indispo { background: #fce4ec; color: #c62828; }
-    .dispo-badge .dot { width: 8px; height: 8px; border-radius: 50%; }
-    .dispo-badge.dispo .dot { background: #43a047; }
-    .dispo-badge.indispo .dot { background: #e53935; }
+.actions-box h3 {
+padding: 12px 16px;
+font-size: 0.75rem;
+text-transform: uppercase;
+letter-spacing: 0.1em;
+background: #d3d3d371;
+color: #71ebe7;
+}
 
-    .cote-box {
-      background: var(--gris-clair);
-      border-radius: 10px;
-      padding: 12px 16px;
-      font-size: 0.82rem;
-      color: var(--gris);
+.action-item {
+display: flex;
+align-items: center;
+gap: 10px;
+padding: 12px 16px;
+border-bottom: 1px solid #f0f0f0;
+cursor: pointer;
+font-size: 0.88rem;
+color: #333;
+transition: background 0.15s;
+}
+
+.action-item:last-child { 
+border-bottom: none;
+}
+
+.action-item:hover { 
+background: #f0faff;
+color: #e8f5e9; 
+}
+.action-item .icon { 
+font-size: 1.1rem;
+  width: 24px;
+  text-align: center;
+  }
+
+/* cette partie permet de juste a dire les avis de la section */
+.avis-section h2 {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.5rem;
+  margin-bottom: 1.2rem;
+}
+
+.rating-dist {
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 12px;
+  padding: 1.2rem;
+  margin-bottom: 1.5rem;
+}
+
+.rating-summary {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.big-score {
+  font-family: 'Playfair Display', serif;
+  font-size: 3.5rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.rating-bars { 
+  flex: 1;
+ }
+
+.bar-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 5px;
+  font-size: 0.78rem;
+}
+
+.bar-label { 
+  width: 40px; 
+  color: grey;
+ }
+
+.bar-track {
+  flex: 1;
+  background: #f0f0f0;
+  border-radius: 4px;
+  height: 8px;
+  overflow: hidden;
+}
+
+.bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  background: #bfe8f2;
+  transition: width 0.6s ease;
+}
+
+.bar-count { 
+  width: 28px; 
+  text-align: right; 
+  color: grey;
+ }
+
+.avis-filtres {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.2rem;
+  flex-wrap: wrap;
+}
+
+/* ce partie est pour les boutons de filtre pour les avis dans la page du livre */
+.filtre-btn {
+  padding: 5px 14px;
+  border-radius: 16px;
+  border: 1.5px solid #ddd;
+  background: #fff;
+  font-size: 0.8rem;
+  cursor: pointer;
+  font-family: 'Arial', sans-serif;
+  transition: all 0.2s;
+}
+
+.filtre-btn:hover, .filtre-btn.active {
+  background: #bfe8f2;
+  border-color: #bfe8f2;
+  color: #fff;
+}
+
+.avis-list { 
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+   }
+
+.avis-card {
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 12px;
+  padding: 1rem 1.2rem;
+}
+
+.avis-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 6px;
+}
+
+.avis-user { 
+  font-weight: 600;
+   font-size: 0.88rem;
+   }
+.avis-date { 
+  font-size: 0.76rem;
+   color: grey;
+}
+.avis-stars { 
+  color: #bfe8f2;
+   font-size: 0.9rem;
+ }
+.avis-text { 
+  font-size: 0.88rem;
+   color: #555;
+    line-height: 1.6;
+     margin-top: 6px;
+     }
+
+.btn-retour {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--orange);
+  color: #fff;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.9rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: background 0.2s, transform 0.15s;
+  margin-bottom: 1.5rem;
+}
+
+.btn-retour:hover { 
+  background: #bfe8f2;
+   transform: translateY(-1px);
+}
+
+.toast {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  background: black;
+  color: #fff;
+  padding: 12px 20px;
+  border-radius: 10px;
+  font-size: 0.88rem;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+  opacity: 0;
+  transform: translateY(10px);
+  transition: all 0.3s;
+  z-index: 999;
+}
+
+.toast.show { 
+opacity: 1;
+  transform:translateY(0);
+  }
+
+@media (max-width: 768px) {
+.livre-page { 
+  grid-template-columns: 1fr;
+  }
+.cover-wrap { 
+  max-width: 220px;
+    margin: auto;
     }
+.livre-titre {
+    font-size: 1.8rem;
+    }
+}
