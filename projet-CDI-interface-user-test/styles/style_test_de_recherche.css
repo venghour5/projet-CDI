@@ -1115,18 +1115,18 @@ font-size: 1.1rem;
     line-height: 1.6;
      margin-top: 6px;
      }
-
+ /* la partie de la section des avis pour les livres dans la page du livre */
 .btn-retour {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: var(--orange);
+  background: #bfe8f2;
   color: #fff;
   border: none;
   padding: 10px 20px;
   border-radius: 10px;
   cursor: pointer;
-  font-family: 'DM Sans', sans-serif;
+  font-family: 'Arial', sans-serif;
   font-size: 0.9rem;
   font-weight: 500;
   text-decoration: none;
@@ -1139,6 +1139,7 @@ font-size: 1.1rem;
    transform: translateY(-1px);
 }
 
+/* il permet de juste a dire les avis de la section */
 .toast {
   position: fixed;
   bottom: 2rem;
@@ -1159,7 +1160,7 @@ font-size: 1.1rem;
 opacity: 1;
   transform:translateY(0);
   }
-
+ /* cest pour animation */
 @media (max-width: 768px) {
 .livre-page { 
   grid-template-columns: 1fr;
