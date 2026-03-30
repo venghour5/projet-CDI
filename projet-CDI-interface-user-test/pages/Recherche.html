@@ -18,13 +18,6 @@
           
         </a>
       </div>
-      <div class="logo-lycee">
-        <a href="index.html">
-          <img src="../Images/logo L.png" alt="logo du lycée"> 
-          CDI <span>-</span> Lycée
-          
-        </a>
-      </div>
       <ul class="nav-links">
         <div class="group">
   <svg viewBox="0 0 24 24" aria-hidden="true" class="search-icon">
@@ -42,7 +35,6 @@
         <li><a href="../pages/Espaces livres.html">Espaces Livres</a></li>
         <li><a href="../pages/Ressources.html">Ressources</a></li>
         <li><a href="./Recherche.html">Recherche</a></li>
-        <li><a href="./Recherche.html">Recherche</a></li>
         <li><a href="#">Accéder aux réservation</a></li>
       </nav>
     </div>
@@ -53,8 +45,6 @@
 <main class="container">
   <div class="search-main"> 
     <h1>Recherche un <span>livre</span></h1>
-  <div class="search-main"> 
-    <h1>Recherche un <span>livre</span></h1>
     <p>Entrez le titre, l'auteur ou la catégorie du livre que vous recherchez :</p>
   </div>
   <div class="big-search-wrap">
@@ -63,26 +53,7 @@
         <path d="M21.53 20.47l-3.66-3.66C19.195 15.24 20 13.214 20 11c0-4.97-4.03-9-9-9s-9 4.03-9 9 4.03 9 9 9c2.215 0 4.24-.804 5.808-2.13l3.66 3.66c.147.146.34.22.53.22s.385-.073.53-.22c.295-.293.295-.767.002-1.06zM3.5 11c0-4.135 3.365-7.5 7.5-7.5s7.5 3.365 7.5 7.5-3.365 7.5-7.5 7.5-7.5-3.365-7.5-7.5z"></path>
       </svg>
       <input id="query-main" class="big-input" type="search" placeholder="Titre, auteur, catégorie…" autocomplete="off">
-  </div>
-  <div class="big-search-wrap">
-    <div class="big-search"> <!--  à revoir dans le css est du search-hero -->
-      <svg viewBox="0 0 24 24" aria-hidden="true" class="search-icon">
-        <path d="M21.53 20.47l-3.66-3.66C19.195 15.24 20 13.214 20 11c0-4.97-4.03-9-9-9s-9 4.03-9 9 4.03 9 9 9c2.215 0 4.24-.804 5.808-2.13l3.66 3.66c.147.146.34.22.53.22s.385-.073.53-.22c.295-.293.295-.767.002-1.06zM3.5 11c0-4.135 3.365-7.5 7.5-7.5s7.5 3.365 7.5 7.5-3.365 7.5-7.5 7.5-7.5-3.365-7.5-7.5z"></path>
-      </svg>
-      <input id="query-main" class="big-input" type="search" placeholder="Titre, auteur, catégorie…" autocomplete="off">
     </div>
-  </div>
-
-    <div class="categories-wrap">
-      <h2>Parcourir par catégorie</h2>
-      <div class="tags">
-        <button class="tag" data-categorie="Tout">Tout</button>
-        <button class="tag" data-categorie="Roman">Roman</button>
-        <button class="tag" data-categorie="Documentaire">Documentaire</button>
-        <button class="tag" data-categorie="Référence">Référence</button>
-        <button class="tag" data-categorie="Manga">Manga</button>
-        <button class="tag" data-categorie="Magazine">Magazine</button>
-      </div>
   </div>
 
     <div class="categories-wrap">
@@ -105,10 +76,6 @@
 
 
 
-  <div id="results-grid">
-    <p class="results-count" id="results-count"></p>
-    <div class="grid" id="results-cards"></div>
-  </div>
 
 
 
@@ -124,11 +91,6 @@
 
 
 
-
-
-
-
-</main>
 </main>
       <footer class="footer">
   <div class="container">
@@ -168,172 +130,6 @@
     <p style="text-align:center; margin-top:30px;">2025 © Tous droits réservés.</p>
   </div>
 </footer>
-<!-- le script permet faire fonctionner la barre de recherche et les filtres de catégories, ainsi que d'afficher les résultats de recherche dynamiquement. Il gère également l'affichage des résultats et le comptage des résultats trouvés. -->
-  <script>
- let livresCDI = [];
-
-fetch("livres.php")
-  .then(res => res.json())
-  .then(data => {
-    livresCDI = data;
-    afficherGrille('');
-  });
- 
-  const inputMain = document.getElementById('query-main');
-  const inputNav  = document.getElementById('query'); /* FIX 3 */
-  const Liste_deroulante = document.getElementById('search-results');
-  const resultsList = document.getElementById('results-list');
-  let categorieActive = "Tout";
- 
-  function iconeCategorie(tag) {
-    const t = tag.toLowerCase();
-    if (t.includes('manga')) return '📖';
-    if (t.includes('roman')) return '📚';
-    if (t.includes('documentaire')) return '🔬';
-    if (t.includes('magazine')) return '📰';
-    if (t.includes('référence')) return '📕';
-    return '📗';
-  }
-//  cette fonction permet mettre en evidance pour les mots recherchés dans les titres, auteurs et catégories des livres affichés. Elle utilise une expression régulière pour trouver les occurrences du texte de recherche et les enveloppe dans une balise `<mark>` avec un style de surlignage personnalisé.
-  function highlightText(text, query) {
-    if (!query) return text;
-    const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
-    return text.replace(regex, '<mark style="background:#e8f5a0;border-radius:2px;padding:0 1px;">$1</mark>');
-  }
- 
-  /* FIX 5 : affiche la grille principale */
-  function afficherGrille(query) {
-    const q = query.trim().toLowerCase();
-    const grille = document.getElementById('results-cards');
-    const compteur = document.getElementById('results-count');
- 
-    const resultats = livresCDI.filter(livre => {
-      // filtrer par catégorie active et par texte de recherche
-      const matchCat = categorieActive === "Tout" || livre.categorie.toLowerCase().includes(categorieActive.toLowerCase());
-      const matchQ   = !q || livre.titre.toLowerCase().includes(q) || livre.auteur.toLowerCase().includes(q) || livre.categorie.toLowerCase().includes(q);
-      return matchCat && matchQ;
-    });
-    /* afficher le nombre de résultats et gérer l'affichage de la grille */
-    const grid = document.getElementById('results-grid');
-    if (resultats.length > 0) {
-      compteur.textContent = `${resultats.length} résultat(s)`;
-      grid.classList.add('visible');
-    } else {
-      compteur.textContent = '';
-      grid.classList.remove('visible');
-    }
-    grille.innerHTML = resultats.map(livre => {
-      const cover = livre.image
-        ? `<div class="book-card-cover"><img src="${livre.image}" alt="${livre.titre}" onerror="this.parentElement.innerHTML='${iconeCategorie(livre.categorie)}'"></div>`
-        : `<div class="book-card-cover">${iconeCategorie(livre.categorie)}</div>`;
-      return `<div class="book-card" onclick="window.location.href='livre.php?id=' + livre.id;">
-                ${cover}
-                <div class="book-card-body">
-                  <div class="book-card-title">${highlightText(livre.titre, query.trim())}</div>
-                  <div class="book-card-author">${highlightText(livre.auteur, query.trim())}</div>
-                  <span class="book-card-tag">${livre.categorie}</span>
-                </div>
-              </div>`;
-    }).join('');
-  }
- 
-  /* FIX 4 : boutons catégorie fonctionnels */
-  document.querySelectorAll('.tag').forEach(btn => {
-    btn.addEventListener('click', () => {
-      categorieActive = btn.dataset.categorie;
-      afficherGrille(inputMain.value);
-    });
-  });
- 
-  /* dropdown nav */
-  function afficherResultats(query) {
-    const q = query.trim().toLowerCase();
-    if (q.length < 2) { Liste_deroulante.classList.remove('visible'); return; }
-    const resultats = livresCDI.filter(livre =>
-      livre.titre.toLowerCase().includes(q) || livre.auteur.toLowerCase().includes(q) || livre.categorie.toLowerCase().includes(q)
-    );
-    resultsList.innerHTML = '';
-    if (resultats.length === 0) {
-      resultsList.innerHTML = '<div class="no-result">Aucun livre trouvé pour « ' + query + ' »</div>';
-    } else {
-      resultats.slice(0, 6).forEach(livre => {
-        const item = document.createElement('div');
-        item.className = 'result-item';
-        const coverHTML = livre.image
-          ? `<img class="result-cover" src="${livre.image}" alt="${livre.titre}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
-             <div class="result-cover-placeholder" style="display:none;">${iconeCategorie(livre.categorie)}</div>`
-          : `<div class="result-cover-placeholder">${iconeCategorie(livre.categorie)}</div>`;
-        item.innerHTML = `${coverHTML}
-          <div class="result-info">
-            <div class="result-title">${highlightText(livre.titre, query.trim())}</div>
-            <div class="result-meta">${highlightText(livre.auteur, query.trim())}</div>
-            <span class="result-tag">${livre.categorie}</span>
-          </div>`;
-        item.addEventListener('click', () => {
-          window.location.href = `livre.html?titre=${encodeURIComponent(livre.titre)}&auteur=${encodeURIComponent(livre.auteur)}&categorie=${encodeURIComponent(livre.categorie)}&image=${encodeURIComponent(livre.image)}`;
-        });
-        resultsList.appendChild(item);
-      });
-      if (resultats.length > 6) {
-        const plus = document.createElement('div');
-        plus.className = 'no-result';
-        plus.style.color = '#1a7a3a';
-        plus.textContent = `+ ${resultats.length - 6} autre(s) résultat(s)…`;
-        resultsList.appendChild(plus);
-      }
-    }
-    Liste_deroulante.classList.add('visible'); // FIX 2 : afficher la liste déroulante même si 0 résultat (affiche "Aucun livre trouvé")
-  }
- // écouteurs d'événements
-  inputMain.addEventListener('input', (e) => { afficherGrille(e.target.value); });
-  inputNav.addEventListener('input', (e) => afficherResultats(e.target.value)); /* FIX 3 */
- // fermer la liste déroulante si clic en dehors
-  document.addEventListener('click', (e) => {
-    if (!e.target.closest('#search-results')) Liste_deroulante.classList.remove('visible');
-  });
- // navigation clavier dans la liste déroulante
-  inputMain.addEventListener('keydown', (e) => {
-    const items = resultsList.querySelectorAll('.result-item');
-    const active = resultsList.querySelector('.result-item.active');
-    let idx = Array.from(items).indexOf(active);
-    if (e.key === 'ArrowDown') { e.preventDefault(); if (active) active.classList.remove('active'); const next = items[Math.min(idx+1,items.length-1)]; if(next){next.classList.add('active');next.style.background='#e0f0e8';} }
-    else if (e.key === 'ArrowUp') { e.preventDefault(); if (active) active.classList.remove('active'); const prev = items[Math.max(idx-1,0)]; if(prev){prev.classList.add('active');prev.style.background='#e0f0e8';} }
-    else if (e.key === 'Enter' && active) { active.click(); }
-    else if (e.key === 'Escape') { Liste_deroulante.classList.remove('visible'); }
-  });
- 
-  /* Chargement initial de la grille */
-  document.getElementById('results-grid').classList.add('visible');
-  afficherGrille('');
-  /* gestion de l'état actif des boutons de catégorie */
-  const boutons = document.querySelectorAll('.tag');
-  boutons.forEach(btn => {
-    btn.addEventListener('click', () => {
-        // enlever l'état actif des autres
-        boutons.forEach(b => b.classList.remove('active'));
-
-        // activer celui qu'on clique
-        btn.classList.add('active');
-    });
-});
-/* fonction pour mettre à jour le compteur de résultats */
-function updateResultsCount(nombre) {
-    const compteur = document.getElementById("results-count");
-
-    if (nombre === 0) {
-        compteur.innerHTML = "Aucun résultat trouvé";
-    } else {
-        compteur.innerHTML = `<strong>${nombre}</strong> résultat${nombre > 1 ? "s" : ""} trouvé${nombre > 1 ? "s" : ""}`;
-    }
-}
-/*Cette partie permet mise a jour le livre dans la page livre.html en passant les informations du livre sélectionné via les paramètres d'URL. La fonction `livreURL` génère une URL avec les détails du livre encodés, ce qui permet à la page livre.html de récupérer ces informations et de les afficher correctement.*/
- function livreURL(livre) {
-    return `livre.html?id=${livre.id}&titre=${encodeURIComponent(livre.titre)}&auteur=${encodeURIComponent(livre.auteur)}&categorie=${encodeURIComponent(livre.categorie)}&image=${encodeURIComponent(livre.image)}&note=${livre.note}&avis=${livre.avis}&cote=${encodeURIComponent(livre.cote)}&disponible=${livre.disponible}&synopsis=${encodeURIComponent(livre.synopsis)}`;
-  }
-  
-    </script>
-  </body>
-</html>
 <!-- le script permet faire fonctionner la barre de recherche et les filtres de catégories, ainsi que d'afficher les résultats de recherche dynamiquement. Il gère également l'affichage des résultats et le comptage des résultats trouvés. -->
   <script>
   const livresCDI = [
