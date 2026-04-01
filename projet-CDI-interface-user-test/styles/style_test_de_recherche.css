@@ -457,11 +457,11 @@ main {
   gap: 2rem;
 }
 
-.section-raw.reverse {
+.section-row.reverse {
   flex-direction: row-reverse;
 }
 
-.image.container img {
+.image-container img {
   width: 400px;
   height: 100px;
   border-radius: 12px;
