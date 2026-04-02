@@ -1069,144 +1069,6 @@ les informations détaillées du livre et les avis des utilisateurs sur le livre
   font-weight: 400;
  }
 
-.avis-section h2 {
-  font-family: 'Playfair Display', serif;
-  font-size: 1.5rem;
-  margin-bottom: 1.2rem;
-}
-
-.rating-dist {
-  background: #fff;
-  border: 1px solid #eee;
-  border-radius: 12px;
-  padding: 1.2rem;
-  margin-bottom: 1.5rem;
-}
-
-.rating-summary {
-  display: flex;
-  align-items: center;
-  gap: 1.5rem;
-  margin-bottom: 1rem;
-}
-
-.big-score {
-  font-family: 'Playfair Display', serif;
-  font-size: 3.5rem;
-  font-weight: 700;
-  line-height: 1;
-}
-
-.rating-bars { 
-  flex: 1;
- }
-
-.bar-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 5px;
-  font-size: 0.78rem;
-}
-
-.bar-label { 
-  width: 40px;
-  color: gray;
-}
-
-.bar-track {
-  flex: 1;
-  background: #f0f0f0;
-  border-radius: 4px;
-  height: 8px;
-  overflow: hidden;
-}
-
-.bar-fill {
-  height: 100%;
-  border-radius: 4px;
-  background: #bfe8f2;
-  transition: width 0.6s ease;
-}
-
-.bar-count { 
-  width: 28px;
-  text-align: right;
-  color: gray; }
-
-/* cette partie permet de juste a dire les avis de la section */
-.avis-section h2 {
-  font-family: 'Playfair Display', serif;
-  font-size: 1.5rem;
-  margin-bottom: 1.2rem;
-}
-
-.rating-dist {
-  background: #fff;
-  border: 1px solid #eee;
-  border-radius: 12px;
-  padding: 1.2rem;
-  margin-bottom: 1.5rem;
-}
-
-.rating-summary {
-  display: flex;
-  align-items: center;
-  gap: 1.5rem;
-  margin-bottom: 1rem;
-}
-
-.big-score {
-  font-family: 'Playfair Display', serif;
-  font-size: 3.5rem;
-  font-weight: 700;
-  line-height: 1;
-}
-
-.rating-bars { 
-  flex: 1;
- }
-
-.bar-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 5px;
-  font-size: 0.78rem;
-}
-
-.bar-label { 
-  width: 40px; 
-  color: grey;
- }
-
-.bar-track {
-  flex: 1;
-  background: #f0f0f0;
-  border-radius: 4px;
-  height: 8px;
-  overflow: hidden;
-}
-
-.bar-fill {
-  height: 100%;
-  border-radius: 4px;
-  background: #bfe8f2;
-  transition: width 0.6s ease;
-}
-
-.bar-count { 
-  width: 28px; 
-  text-align: right; 
-  color: grey;
- }
-
-.avis-filtres {
-  display: flex;
-  gap: 0.5rem;
-  margin-bottom: 1.2rem;
-  flex-wrap: wrap;
-}
 
 /* ce partie est pour les boutons de filtre pour les avis dans la page du livre */
 .filtre-btn {
@@ -1226,44 +1088,6 @@ les informations détaillées du livre et les avis des utilisateurs sur le livre
   color: #fff;
 }
 
-.avis-list { 
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-   }
-
-.avis-card {
-  background: #fff;
-  border: 1px solid #eee;
-  border-radius: 12px;
-  padding: 1rem 1.2rem;
-}
-
-.avis-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 6px;
-}
-
-.avis-user { 
-  font-weight: 600;
-  font-size: 0.88rem;
-   }
-.avis-date { 
-  font-size: 0.76rem;
-  color: grey;
-}
-.avis-stars { 
-  color: #bfe8f2;
-  font-size: 0.9rem;
- }
-.avis-text { 
-  font-size: 0.88rem;
-  color: #555;
-  line-height: 1.6;
-  margin-top: 6px;
-}
  /* la partie de la section des avis pour les livres dans la page du livre */
 .btn-retour {
   display: inline-flex;
@@ -1323,3 +1147,289 @@ les informations détaillées du livre et les avis des utilisateurs sur le livre
   }
 }
 
+/* Google Fonts import */
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@400;600;700&display=swap');
+
+/* Header ameliore */
+header {
+  z-index: 100;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.18);
+}
+
+/* Animation fade-in pour les sections */
+@keyframes fadeInSection {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ---- PAGE ESPACES LIVRES ---- */
+
+/* Titre principal */
+.container > h1 {
+  font-family: 'Playfair Display', serif;
+  color: #222;
+  position: relative;
+  padding-bottom: 0.5rem;
+}
+
+.container > h1::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 60px;
+  height: 3px;
+  background: #88c6d6;
+  border-radius: 2px;
+}
+
+/* Sections en cartes */
+.section {
+  background: #fff;
+  border-radius: 16px;
+  border: 1px solid #eaeaea;
+  animation: fadeInSection 0.6s ease both;
+}
+
+.section:nth-child(2) { animation-delay: 0.1s; }
+.section:nth-child(3) { animation-delay: 0.2s; }
+.section:nth-child(4) { animation-delay: 0.3s; }
+.section:nth-child(5) { animation-delay: 0.4s; }
+
+.section h2 {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.6rem;
+  color: #222;
+  margin-bottom: 0.5rem;
+  position: relative;
+  padding-bottom: 0.4rem;
+}
+
+.section h2::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 40px;
+  height: 3px;
+  background: linear-gradient(90deg, #88c6d6, #b6e4ef);
+  border-radius: 2px;
+}
+
+.section > p {
+  color: #777;
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+/* Cartes de livres ameliorees */
+.ronger-image {
+  border: 1px solid #f0f0f0;
+  cursor: pointer;
+  overflow: hidden;
+  width: 200px;
+  min-width: 160px;
+}
+
+.ronger-image img {
+  transition: transform 0.35s ease;
+}
+
+.ronger-image:hover img {
+  transform: scale(1.05);
+}
+
+.ronger-image small {
+  display: block;
+  text-align: center;
+  color: #999;
+  font-size: 0.78rem;
+  margin-top: 0.25rem;
+}
+
+/* Message de chargement */
+.chargement {
+  color: #aaa;
+  font-size: 0.9rem;
+  font-style: italic;
+  padding: 2rem;
+  text-align: center;
+  width: 100%;
+}
+
+/* Boutons ameliores */
+.btn {
+  background: linear-gradient(135deg, #88c6d6, #6bb3c5);
+  box-shadow: 0 4px 14px rgba(136, 198, 214, 0.3);
+  border-radius: 8px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.btn:hover {
+  background: linear-gradient(135deg, #6bb3c5, #5aa3b5);
+  box-shadow: 0 6px 20px rgba(136, 198, 214, 0.4);
+  transform: translateY(-3px);
+}
+
+/* Section-row image amelioree */
+.image-container {
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+  margin-top: 1rem;
+}
+
+.image-container img {
+  transition: transform 0.4s ease;
+  display: block;
+}
+
+.image-container:hover img {
+  transform: scale(1.03);
+}
+
+.text h2 {
+  font-family: 'Playfair Display', serif;
+}
+
+.text p {
+  color: #555;
+  line-height: 1.7;
+  font-size: 0.95rem;
+}
+
+
+/* ---- PAGE RESSOURCES ---- */
+
+/* Article card */
+.container.ressources article {
+  background: #fff;
+  border-radius: 16px;
+  padding: 2.5rem;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+  border: 1px solid #eaeaea;
+  animation: fadeInSection 0.6s ease both;
+}
+
+.container.ressources h1 {
+  font-family: 'Playfair Display', serif;
+  font-size: 2rem;
+  color: #222;
+  margin-bottom: 1.5rem;
+  position: relative;
+  padding-bottom: 0.6rem;
+}
+
+.container.ressources h1::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 60px;
+  height: 3px;
+  background: #88c6d6;
+  border-radius: 2px;
+}
+
+.container.ressources section {
+  margin-top: 1.5rem;
+}
+
+.container.ressources section h2 {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.4rem;
+  color: #333;
+  margin-bottom: 0.75rem;
+}
+
+.container.ressources section > span {
+  display: inline-block;
+  background: #e8f6fa;
+  color: #5a9fb0;
+  padding: 3px 12px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  margin-bottom: 1rem;
+}
+
+/* Image article */
+.article-image {
+  width: 100%;
+  max-height: 320px;
+  object-fit: cover;
+  border-radius: 12px;
+  margin: 1rem 0;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+  transition: transform 0.3s ease;
+}
+
+.article-image:hover {
+  transform: scale(1.01);
+}
+
+.container.ressources section p {
+  color: #555;
+  font-size: 0.95rem;
+  line-height: 1.75;
+  margin-bottom: 0.75rem;
+}
+
+/* Lien acces */
+.actu.link a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(135deg, #88c6d6, #6bb3c5);
+  color: #fff;
+  padding: 10px 22px;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.25s ease;
+  box-shadow: 0 4px 14px rgba(136, 198, 214, 0.3);
+  margin-top: 0.5rem;
+}
+
+.actu.link a:hover {
+  background: linear-gradient(135deg, #6bb3c5, #5aa3b5);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(136, 198, 214, 0.4);
+}
+
+/* ---- FOOTER ameliore ---- */
+.footer {
+  margin-top: 3rem;
+  border-top: 1px solid #333;
+}
+
+.resaux-social img {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  filter: brightness(0) invert(1);
+  transition: transform 0.2s ease;
+}
+
+.resaux-social a:hover img {
+  filter: brightness(0);
+  transform: scale(1.1);
+}
+
+/* ---- BODY fond leger ---- */
+body {
+  background: #f7f9fa;
+}
+
+/* Smooth scroll */
+html {
+  scroll-behavior: smooth;
+}
