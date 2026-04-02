@@ -197,7 +197,7 @@ if (!$livre) {
       const matchQ   = !q || livre.titre.toLowerCase().includes(q) || livre.auteur.toLowerCase().includes(q) || livre.categorie.toLowerCase().includes(q);
       return matchCat && matchQ;
     });
- 
+    // afficher le nombre de résultats et la grille
     const grid = document.getElementById('results-grid');
     if (resultats.length > 0) {
       compteur.textContent = `${resultats.length} résultat(s)`;
@@ -206,12 +206,15 @@ if (!$livre) {
       compteur.textContent = '';
       grid.classList.remove('visible');
     }
+    // construire la grille de résultats
     grille.innerHTML = resultats.map(livre => {
       const cover = livre.image
+        // ajouter un onerror pour afficher l'icône de catégorie si l'image ne charge pas, au lieu de laisser un espace vide
         ? `<div class="book-card-cover"><img src="${livre.image}" alt="${livre.titre}" onerror="this.parentElement.innerHTML='${iconeCategorie(livre.categorie)}'"></div>`
         : `<div class="book-card-cover">${iconeCategorie(livre.categorie)}</div>`;
-      return `<div class="book-card" onclick="window.location.href='livre.html?titre=${encodeURIComponent(livre.titre)}&auteur=${encodeURIComponent(livre.auteur)}&categorie=${encodeURIComponent(livre.categorie)}&image=${encodeURIComponent(livre.image)}'">
+      return `<div class="book-card" onclick="window.location.href='livre.php?titre=${encodeURIComponent(livre.titre)}&auteur=${encodeURIComponent(livre.auteur)}&categorie=${encodeURIComponent(livre.categorie)}&image=${encodeURIComponent(livre.image)}'">
                 ${cover}
+                // mettre en évidence les parties du titre et de l'auteur qui correspondent à la recherche
                 <div class="book-card-body">
                   <div class="book-card-title">${highlightText(livre.titre, query.trim())}</div>
                   <div class="book-card-author">${highlightText(livre.auteur, query.trim())}</div>
@@ -221,7 +224,7 @@ if (!$livre) {
     }).join('');
   }
  
-  /* FIX 4 : boutons catégorie fonctionnels */
+  /* boutons catégorie fonctionnels */
   document.querySelectorAll('.tag').forEach(btn => {
     btn.addEventListener('click', () => {
       categorieActive = btn.dataset.categorie;
@@ -230,6 +233,7 @@ if (!$livre) {
   });
  
   /* dropdown nav */
+  //il permet afficher les résultats de recherche dans la liste déroulante du nav, pas dans la grille principale
   function afficherResultats(query) {
     const q = query.trim().toLowerCase();
     if (q.length < 2) { Liste_deroulante.classList.remove('visible'); return; }
@@ -254,7 +258,7 @@ if (!$livre) {
             <span class="result-tag">${livre.categorie}</span>
           </div>`;
         item.addEventListener('click', () => {
-          window.location.href = `livre.html?titre=${encodeURIComponent(livre.titre)}&auteur=${encodeURIComponent(livre.auteur)}&categorie=${encodeURIComponent(livre.categorie)}&image=${encodeURIComponent(livre.image)}`;
+          window.location.href = `livre.php?titre=${encodeURIComponent(livre.titre)}&auteur=${encodeURIComponent(livre.auteur)}&categorie=${encodeURIComponent(livre.categorie)}&image=${encodeURIComponent(livre.image)}`;
         });
         resultsList.appendChild(item);
       });
