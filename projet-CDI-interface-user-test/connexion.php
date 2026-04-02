@@ -1,6 +1,6 @@
 <?php
 $host = "localhost";
-$dbname = "cdi_bibliotheque";
+$dbname = "cdi";
 $username = "root";
 $password = "";
 

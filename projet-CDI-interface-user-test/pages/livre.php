@@ -1,3 +1,15 @@
+<?php
+require_once '../connexion.php';
+
+$id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+$livre = null;
+
+if ($id > 0) {
+  $stmt = $pdo->prepare("SELECT * FROM livres WHERE id = :id");
+  $stmt->execute([':id' => $id]);
+  $livre = $stmt->fetch();
+}
+?>
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -92,19 +104,10 @@
   </div>
   <!-- COLONNE DE DROITE -->
   <div class="livre-right">
-
-      <!-- COLONNE DE DROITE -->
-  <div class="livre-right">
     <div>
       <span class="livre-categorie" id="livre-categorie">—</span>
       <h1 class="livre-titre" id="livre-titre">Chargement…</h1>
       <p class="livre-auteur" id="livre-auteur">—</p>
-
-      <div class="rating-row">
-        <span class="stars" id="stars-display">☆☆☆☆☆</span>
-        <span class="rating-num" id="note-num">—</span>
-        <span class="rating-count" id="avis-count">— avis</span>
-      </div>
     </div>
 
     <div class="synopsis-box" id="synopsis-box">—</div>
@@ -114,6 +117,7 @@
       <table class="infos-table">
         <tr><td>Auteur</td><td id="info-auteur">—</td></tr>
         <tr><td>Catégorie</td><td id="info-cat">—</td></tr>
+        <tr><td>Cote</td><td id="info-cote">—</td></tr>
         <tr><td>Disponibilité</td><td id="info-dispo">—</td></tr>
         <tr><td>Langue</td><td>Français</td></tr>
         <tr><td>Localisation</td><td>CDI — Lycée Lavoisier, Méru</td></tr>
@@ -123,7 +127,6 @@
 </div>
 
 <div class="toast" id="toast"></div>
-  </div>
 
  <footer class="footer">
   <div class="container">
@@ -177,8 +180,6 @@
   var auteurLivre = urlParams.get('auteur');
   var categorieLivre = urlParams.get('categorie');
   var imageLivre = urlParams.get('image');
-  var noteLivre = urlParams.get('note');
-  var avisLivre = urlParams.get('avis');
   var coteLivre = urlParams.get('cote');
   var synopsisLivre = urlParams.get('synopsis');
   var disponibleLivre = urlParams.get('disponible');
@@ -195,16 +196,6 @@
   }
   if (imageLivre == null) {
     imageLivre = ''
-  }
-  if (noteLivre == null) {
-    noteLivre = 4.0
-  } else {
-    noteLivre = parseFloat(noteLivre) // on convertit en nombre a virgule
-  }
-  if (avisLivre == null) {
-    avisLivre = 0
-  } else {
-    avisLivre = parseInt(avisLivre) // on convertit en nombre entier
   }
   if (coteLivre == null) {
     coteLivre = '—'
@@ -317,265 +308,13 @@
   }
 
 
-  // ============================================
-  // affichage des etoiles (ex: 4.5 → ★★★★½☆)
-  // ============================================
-
-  function afficherEtoiles(note) {
-    var resultat = ''
-    var noteEntiere = Math.floor(note) // partie entiere ex: 4.5 → 4
-    var noteDecimale = note - noteEntiere // partie decimale ex: 4.5 → 0.5
-
-    // on ajoute une etoile pleine pour chaque point entier
-    var i = 0
-    while (i < noteEntiere) {
-      resultat = resultat + '★'
-      i = i + 1
-    }
-
-    // si la decimale est >= 0.5 on ajoute une demi etoile
-    if (noteDecimale >= 0.5) {
-      resultat = resultat + '½'
-    }
-
-    // on complete jusqu'a 5 avec des etoiles vides
-    var nbEtoiles = resultat.length
-    while (nbEtoiles < 5) {
-      resultat = resultat + '☆'
-      nbEtoiles = nbEtoiles + 1
-    }
-
-    return resultat
-  }
-
-  // on met les etoiles et la note dans la page
-  var etoilesTexte = afficherEtoiles(noteLivre)
-
-  document.getElementById('stars-display').textContent = etoilesTexte
-  document.getElementById('note-num').textContent = noteLivre.toFixed(1)
-  document.getElementById('avis-count').textContent = avisLivre + ' avis'
-
-  // pareil pour le gros score en bas
-  document.getElementById('big-score').textContent = noteLivre.toFixed(1)
-  document.getElementById('big-stars').textContent = etoilesTexte
-  document.getElementById('total-avis').textContent = avisLivre + ' avis'
 
 
-  // ============================================
-  // les barres de repartition des notes
-  // (on fait semblant d'avoir les vraies données)
-  // ============================================
-
-  var nbTotal = avisLivre
-
-  // on repartit les avis sur les 5 niveaux d'etoiles (c'est approximatif)
-  var nb5etoiles = Math.round(nbTotal * 0.55)
-  var nb4etoiles = Math.round(nbTotal * 0.25)
-  var nb3etoiles = Math.round(nbTotal * 0.10)
-  var nb2etoiles = Math.round(nbTotal * 0.05)
-  var nb1etoile  = Math.round(nbTotal * 0.05)
-
-  var conteneurBarres = document.getElementById('bars-container')
-
-  // barre 5 etoiles
-  var pourcent5 = 0
-  if (nbTotal > 0) {
-    pourcent5 = Math.round(nb5etoiles / nbTotal * 100)
-  }
-  conteneurBarres.innerHTML = conteneurBarres.innerHTML + '<div class="bar-row"><span class="bar-label">5 ★</span><div class="bar-track"><div class="bar-fill" style="width:' + pourcent5 + '%"></div></div><span class="bar-count">' + nb5etoiles + '</span></div>'
-
-  // barre 4 etoiles
-  var pourcent4 = 0
-  if (nbTotal > 0) {
-    pourcent4 = Math.round(nb4etoiles / nbTotal * 100)
-  }
-  conteneurBarres.innerHTML = conteneurBarres.innerHTML + '<div class="bar-row"><span class="bar-label">4 ★</span><div class="bar-track"><div class="bar-fill" style="width:' + pourcent4 + '%"></div></div><span class="bar-count">' + nb4etoiles + '</span></div>'
-
-  // barre 3 etoiles
-  var pourcent3 = 0
-  if (nbTotal > 0) {
-    pourcent3 = Math.round(nb3etoiles / nbTotal * 100)
-  }
-  conteneurBarres.innerHTML = conteneurBarres.innerHTML + '<div class="bar-row"><span class="bar-label">3 ★</span><div class="bar-track"><div class="bar-fill" style="width:' + pourcent3 + '%"></div></div><span class="bar-count">' + nb3etoiles + '</span></div>'
-
-  // barre 2 etoiles
-  var pourcent2 = 0
-  if (nbTotal > 0) {
-    pourcent2 = Math.round(nb2etoiles / nbTotal * 100)
-  }
-  conteneurBarres.innerHTML = conteneurBarres.innerHTML + '<div class="bar-row"><span class="bar-label">2 ★</span><div class="bar-track"><div class="bar-fill" style="width:' + pourcent2 + '%"></div></div><span class="bar-count">' + nb2etoiles + '</span></div>'
-
-  // barre 1 etoile
-  var pourcent1 = 0
-  if (nbTotal > 0) {
-    pourcent1 = Math.round(nb1etoile / nbTotal * 100)
-  }
-  conteneurBarres.innerHTML = conteneurBarres.innerHTML + '<div class="bar-row"><span class="bar-label">1 ★</span><div class="bar-track"><div class="bar-fill" style="width:' + pourcent1 + '%"></div></div><span class="bar-count">' + nb1etoile + '</span></div>'
 
 
-  // ============================================
-  // les avis des lecteurs (données de test)
-  // ============================================
-
-  // une liste d'avis qu'on a mis a la main pour tester
-  var tousLesAvis = []
-
-  var avis1 = {}
-  avis1.utilisateur = 'Marie L.'
-  avis1.note = 5
-  avis1.date = 'Janvier 2025'
-  avis1.texte = "Absolument magnifique, je l'ai lu d'une traite ! Je le recommande à tous."
-  tousLesAvis.push(avis1)
-
-  var avis2 = {}
-  avis2.utilisateur = 'Thomas B.'
-  avis2.note = 4
-  avis2.date = 'Novembre 2024'
-  avis2.texte = "Très bien écrit, l'histoire est prenante. Quelques longueurs au milieu mais ça vaut le coup."
-  tousLesAvis.push(avis2)
-
-  var avis3 = {}
-  avis3.utilisateur = 'Léa M.'
-  avis3.note = 5
-  avis3.date = 'Octobre 2024'
-  avis3.texte = "Un de mes préférés du CDI, je l'ai emprunté deux fois !"
-  tousLesAvis.push(avis3)
-
-  var avis4 = {}
-  avis4.utilisateur = 'Hugo R.'
-  avis4.note = 3
-  avis4.date = 'Septembre 2024'
-  avis4.texte = "Pas mal mais j'ai trouvé la fin un peu décevante. Dans l'ensemble une bonne lecture."
-  tousLesAvis.push(avis4)
-
-  var avis5 = {}
-  avis5.utilisateur = 'Camille D.'
-  avis5.note = 5
-  avis5.date = 'Mars 2024'
-  avis5.texte = "Coup de cœur absolu. L'écriture est fluide et les personnages très attachants."
-  tousLesAvis.push(avis5)
-
-  var avis6 = {}
-  avis6.utilisateur = 'Antoine V.'
-  avis6.note = 4
-  avis6.date = 'Février 2024'
-  avis6.texte = "Bonne lecture, je recommande pour les amateurs du genre."
-  tousLesAvis.push(avis6)
 
 
-  // cette fonction affiche une liste d'avis dans la page
-  function afficherAvis(listeAvis) {
-    var conteneur = document.getElementById('avis-list')
-    conteneur.innerHTML = '' // on vide d'abord
 
-    if (listeAvis.length == 0) {
-      conteneur.innerHTML = '<div style="color:var(--gris);font-size:0.88rem;padding:1rem 0;">Aucun avis pour ce filtre.</div>'
-      return
-    }
-
-    // on parcourt tous les avis et on cree une carte pour chacun
-    var j = 0
-    while (j < listeAvis.length) {
-      var avisActuel = listeAvis[j]
-
-      // on construit les etoiles de cet avis
-      var etoilesAvis = ''
-      var k = 0
-      while (k < avisActuel.note) {
-        etoilesAvis = etoilesAvis + '★'
-        k = k + 1
-      }
-      while (k < 5) {
-        etoilesAvis = etoilesAvis + '☆'
-        k = k + 1
-      }
-
-      // on cree le html de la carte
-      var carteHtml = '<div class="avis-card">'
-      carteHtml = carteHtml + '<div class="avis-header">'
-      carteHtml = carteHtml + '<div>'
-      carteHtml = carteHtml + '<span class="avis-user">' + avisActuel.utilisateur + '</span>'
-      carteHtml = carteHtml + '<div class="avis-stars">' + etoilesAvis + '</div>'
-      carteHtml = carteHtml + '</div>'
-      carteHtml = carteHtml + '<span class="avis-date">' + avisActuel.date + '</span>'
-      carteHtml = carteHtml + '</div>'
-      carteHtml = carteHtml + '<p class="avis-text">' + avisActuel.texte + '</p>'
-      carteHtml = carteHtml + '</div>'
-
-      conteneur.innerHTML = conteneur.innerHTML + carteHtml
-
-      j = j + 1
-    }
-  }
-
-  // on affiche tous les avis au debut
-  afficherAvis(tousLesAvis)
-
-
-  // ============================================
-  // boutons filtres des avis
-  // ============================================
-
-  document.getElementById('filtre-tous').onclick = function() {
-    // enlever le style actif sur tous les boutons
-    document.getElementById('filtre-tous').className = 'filtre-btn active'
-    document.getElementById('filtre-5').className = 'filtre-btn'
-    document.getElementById('filtre-4').className = 'filtre-btn'
-    document.getElementById('filtre-3').className = 'filtre-btn'
-    // afficher tous les avis
-    afficherAvis(tousLesAvis)
-  }
-
-  document.getElementById('filtre-5').onclick = function() {
-    document.getElementById('filtre-tous').className = 'filtre-btn'
-    document.getElementById('filtre-5').className = 'filtre-btn active'
-    document.getElementById('filtre-4').className = 'filtre-btn'
-    document.getElementById('filtre-3').className = 'filtre-btn'
-    // garder seulement les avis avec 5 etoiles
-    var avis5etoiles = []
-    var i = 0
-    while (i < tousLesAvis.length) {
-      if (tousLesAvis[i].note == 5) {
-        avis5etoiles.push(tousLesAvis[i])
-      }
-      i = i + 1
-    }
-    afficherAvis(avis5etoiles)
-  }
-
-  document.getElementById('filtre-4').onclick = function() {
-    document.getElementById('filtre-tous').className = 'filtre-btn'
-    document.getElementById('filtre-5').className = 'filtre-btn'
-    document.getElementById('filtre-4').className = 'filtre-btn active'
-    document.getElementById('filtre-3').className = 'filtre-btn'
-    // garder seulement les avis avec 4 etoiles
-    var avis4etoiles = []
-    var i = 0
-    while (i < tousLesAvis.length) {
-      if (tousLesAvis[i].note == 4) {
-        avis4etoiles.push(tousLesAvis[i])
-      }
-      i = i + 1
-    }
-    afficherAvis(avis4etoiles)
-  }
-
-  document.getElementById('filtre-3').onclick = function() {
-    document.getElementById('filtre-tous').className = 'filtre-btn'
-    document.getElementById('filtre-5').className = 'filtre-btn'
-    document.getElementById('filtre-4').className = 'filtre-btn'
-    document.getElementById('filtre-3').className = 'filtre-btn active'
-    // garder seulement les avis avec 3 etoiles
-    var avis3etoiles = []
-    var i = 0
-    while (i < tousLesAvis.length) {
-      if (tousLesAvis[i].note == 3) {
-        avis3etoiles.push(tousLesAvis[i])
-      }
-      i = i + 1
-    }
-    afficherAvis(avis3etoiles)
-  }
 
 
   // ============================================
