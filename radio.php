@@ -1,0 +1,211 @@
+﻿<?php
+session_start();
+if (!isset($_SESSION['id_user'])) {
+    header("Location: login.php");
+    exit();
+}
+
+if ((int)($_SESSION['role'] ?? -1) !== 0) {
+    header("Location: cdi.php");
+    exit();
+}
+?>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Réservation Salle Radio</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style-reservation.css" />
+</head>
+<body>
+
+<header class="site-header">
+  <nav class="navbar">
+    <div class="logo-lycee">
+      <a href="index.php">
+        <span class="logo-mark">CDI</span>
+        CDI <span class="logo-separator">-</span> Lycee
+      </a>
+    </div>
+
+    <ul class="nav-links">
+      <li><a href="vehicule.php">Vehicule</a></li>
+      <li><a href="radio.php" class="active">Salle radio</a></li>
+      <li><a href="mobile.php">Classe mobile</a></li>
+      <li><a href="logout.php">Deconnexion</a></li>
+      <li class="admin-pill">Admin <?php echo htmlspecialchars($_SESSION['login']); ?></li>
+    </ul>
+  </nav>
+</header>
+
+<main class="page">
+  <div class="reservation-layout">
+
+    <section class="agenda-card">
+      <div class="resource-tabs">
+        <button class="resource-btn" type="button" onclick="window.location.href='vehicule.php'">Véhicule</button>
+        <button class="resource-btn active" type="button">Salle radio</button>
+        <button class="resource-btn" type="button" onclick="window.location.href='mobile.php'">Classe mobile</button>
+      </div>
+
+      <h2 class="agenda-title">Planning salle radio</h2>
+
+      <div class="agenda-grid" id="agenda">
+        <div class="corner"></div>
+        <div class="day-header">Lundi</div>
+        <div class="day-header">Mardi</div>
+        <div class="day-header">Mercredi</div>
+        <div class="day-header">Jeudi</div>
+        <div class="day-header">Vendredi</div>
+        <div class="day-header">Samedi</div>
+        <div class="day-header">Dimanche</div>
+      </div>
+    </section>
+
+    <aside class="history-card">
+      <h2 class="history-title">Historique</h2>
+      <div class="history-list" id="historyList">
+        <p class="history-empty" id="historyEmpty">Aucune réservation.</p>
+      </div>
+
+      <div class="legend-box">
+        <h3 class="legend-title">Professeurs</h3>
+        <div class="legend-list" id="legendList">
+          <p class="legend-empty">Aucun professeur.</p>
+        </div>
+      </div>
+    </aside>
+
+  </div>
+</main>
+
+<div class="modal-overlay" id="modal">
+  <div class="modal-box">
+    <h2>Nouvelle réservation</h2>
+    <p id="slotInfo"></p>
+
+    <input type="text" id="teacher" placeholder="Nom du professeur">
+
+    <select id="duration">
+      <option value="1">1 heure</option>
+      <option value="2">2 heures</option>
+      <option value="3">3 heures</option>
+      <option value="4">4 heures</option>
+    </select>
+
+    <div class="modal-actions">
+      <button id="cancel">Annuler</button>
+      <button id="confirm">Valider</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const times = ["8h35","9h35","10h45","11h45","13h15","14h15","15h25","16h25","17h20"];
+const days = ["Lundi","Mardi","Mercredi","Jeudi","Vendredi","Samedi","Dimanche"];
+const agenda = document.getElementById("agenda");
+
+times.forEach(time => {
+  const label = document.createElement("div");
+  label.className = "time-label";
+  label.textContent = time;
+  agenda.appendChild(label);
+
+  days.forEach(day => {
+    const btn = document.createElement("button");
+    btn.className = "slot";
+    btn.dataset.day = day;
+    btn.dataset.time = time;
+    agenda.appendChild(btn);
+  });
+});
+
+const colors = ["#ff6b6b","#4dabf7","#51cf66","#fcc419","#845ef7","#ff922b"];
+const teacherColors = {};
+
+function getColor(name){
+  if(!teacherColors[name]){
+    teacherColors[name] = colors[Object.keys(teacherColors).length % colors.length];
+    updateLegend();
+  }
+  return teacherColors[name];
+}
+
+function updateLegend(){
+  const list = document.getElementById("legendList");
+  list.innerHTML = "";
+
+  Object.entries(teacherColors).forEach(([name,color])=>{
+    const item = document.createElement("div");
+    item.className="legend-item";
+    item.innerHTML = `
+      <div class="legend-color" style="background:${color}"></div>
+      <span>${name}</span>
+    `;
+    list.appendChild(item);
+  });
+}
+
+const modal = document.getElementById("modal");
+const teacherInput = document.getElementById("teacher");
+const durationSelect = document.getElementById("duration");
+const slotInfo = document.getElementById("slotInfo");
+
+let selected = null;
+
+document.addEventListener("click", e=>{
+  if(e.target.classList.contains("slot")){
+    if(e.target.classList.contains("reserved")) return;
+
+    selected = e.target;
+    slotInfo.textContent = `${selected.dataset.day} - ${selected.dataset.time}`;
+    modal.classList.add("active");
+  }
+});
+
+document.getElementById("cancel").onclick = ()=> modal.classList.remove("active");
+
+document.getElementById("confirm").onclick = ()=>{
+  const name = teacherInput.value.trim();
+  const duration = parseInt(durationSelect.value);
+
+  if(!name) return alert("Nom requis");
+
+  const color = getColor(name);
+  const day = selected.dataset.day;
+  const startIndex = times.indexOf(selected.dataset.time);
+  const daySlots = [...document.querySelectorAll(`.slot[data-day="${day}"]`)];
+
+  for(let i=0;i<duration;i++){
+    if(daySlots[startIndex+i]?.classList.contains("reserved")){
+      alert("Déjà réservé");
+      return;
+    }
+  }
+
+  for(let i=0;i<duration;i++){
+    const s = daySlots[startIndex+i];
+    s.classList.add("reserved");
+    s.style.background = color;
+    if(i===0) s.textContent = name;
+  }
+
+  const history = document.getElementById("historyList");
+  document.getElementById("historyEmpty")?.remove();
+
+  const item = document.createElement("div");
+  item.className="history-item";
+  item.innerHTML = `<strong>${day}</strong> ${name} (${duration}h)`;
+  history.prepend(item);
+
+  modal.classList.remove("active");
+  teacherInput.value="";
+};
+</script>
+
+</body>
+</html>
+
+
