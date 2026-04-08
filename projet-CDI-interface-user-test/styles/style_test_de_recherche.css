@@ -290,12 +290,13 @@ main {
     max-width: 100%;
   }
 }
-/* Footer */
+
 .container {
-  max-width: 1170px;
+  max-width: 100rem;
   margin: auto;
 }
 
+/* Footer */
 .row {
   display: flex;
   flex-wrap: wrap;

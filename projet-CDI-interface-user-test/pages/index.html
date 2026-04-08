@@ -44,9 +44,9 @@
 
   <main>
     <section class="intro">
-      <h1>Bienvenue au CDI</h1>
+      <h1 id="Titre">Bienvenue au CDI</h1>
       <p>Découvrez nos collections, explorez nos ressources numériques et accédez à toutes les informations pour votre documentation scolaire.</p>
-      <button class="btn"><a href = "page1.html">C'est parti !</a></button>
+      <button class="btn"><a href = "Recherche.html">C'est parti !</a></button>
     </section>
 
     <section class="nouveautes">
@@ -99,32 +99,163 @@
     </section>
   </main>
 
-  <footer>
-    <div >
-      <div class="titre-footer">
-        <p>CDI - Lycée</p>
+  <footer class="footer">
+  <div class="container">
+    <div class="row">
+
+      <div class="footer-col">
+        <h4>CDI - Lycée</h4>
       </div>
-      <div class="logo lycee">
-        <img src="../Images/cropped-Lycee-Lavoisier-Meru_Plan-de-travail-1-copie-4.png" alt="Logo du lycée">
-      </div>
-      <div class="coordonnees">
-        <p>coordonnées</p>
-        <p>LYCEE PROFESSIONNEL LAVOISIER</p>
+
+      <div class="footer-col">
+        <h4>Coordonnées</h4>
+        <p>LYCÉE PROFESSIONNEL LAVOISIER</p>
         <p>8 RUE JULES FERRY</p>
         <p>60110 MERU</p>
-        </div>
-        <div class="informations">
-        <p>informations</p>
-        <p><a href="#">Mentions légales </a></p>
-        <p><a href="#">Mentions RGPD </a></p>
+      </div>
+
+      <div class="footer-col">
+        <h4>Informations</h4>
+        <ul>
+          <li ><a href="#">Mentions légales</a></li>
+          <li><a href="#">Mentions RGPD</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h4>Suivez-nous</h4>
         <div class="resaux-social">
-        <p><a href="#">Suivez-nous</a></p>
+          <a href="https://www.facebook.com/profile.php?id=100086643024970&locale=fr_FR"><img src="/Images/ressaux/facebook.png" alt="Facebook"></a>
+          <a href="https://www.youtube.com/channel/UCAHjFYvFlPExoVpSqldZX5A"><img src="/Images/ressaux/youtube.png" alt="Youtube"></i></a>
+          <a href="https://www.instagram.com/lyceedesmetiers_lavoisier_meru/?g=5"><img src="/Images/ressaux/instagram.png" alt="Instagram"></a>
+          <a href="https://www.linkedin.com/company/lyc%C3%A9e-des-m%C3%A9tiers-des-services-antoine-lavoisier/posts/?feedView=all&viewAsMember=true"><img src="/Images/ressaux/linkedin.png" alt="Linkedin"></i></a>
         </div>
-          </div>
-        <p>2025 © Tous droits réservés.</p>
+      </div>
+
     </div>
-  </footer> 
+
+    <p style="text-align:center; margin-top:30px;"> 2025 © Tous droits réservés.</p>
+  </div>
+</footer>
+
+<script>
+  // les livres du CDI (titre, auteur, catégorie, image) - à remplacer par une vraie base de données ou un fichier JSON dans une vraie application :p
+    const livresCDI = [
+      { titre: "Blue Spring Ride Tome 1", auteur: "Io Sakisaka", categorie: "Manga", image: "../Images/livres/Manga/Blue-Spring-Ride-Tome-1.jpg" },
+      { titre: "Blue Spring Ride Tome 2", auteur: "Io Sakisaka", categorie: "Manga", image: "" },
+      { titre: "Blue Spring Ride Tome 3", auteur: "Io Sakisaka", categorie: "Manga", image: "" },
+      { titre: "Roman policier", auteur: "Auteur inconnu", categorie: "Roman", image: "../Images/livres/romans/Roman-policier.jpg" },
+      { titre: "Le Code Rose", auteur: "Auteur inconnu", categorie: "Roman historique", image: "../Images/livres/romans/Le-Code-Rose-Grand-Prix-du-Roman-Historique-2023.jpg" },
+      { titre: "Harry Potter à l'école des sorciers", auteur: "J.K. Rowling", categorie: "Roman fantastique", image: "" },
+      { titre: "Harry Potter et la chambre des secrets", auteur: "J.K. Rowling", categorie: "Roman fantastique", image: "" },
+      { titre: "Le Petit Prince", auteur: "Antoine de Saint-Exupéry", categorie: "Roman", image: "" },
+      { titre: "1984", auteur: "George Orwell", categorie: "Roman", image: "" },
+      { titre: "L'Étranger", auteur: "Albert Camus", categorie: "Roman", image: "" },
+      { titre: "Naruto Tome 1", auteur: "Masashi Kishimoto", categorie: "Manga", image: "" },
+      { titre: "Death Note Tome 1", auteur: "Tsugumi Ohba", categorie: "Manga", image: "" },
+      { titre: "L'atlas des records", auteur: "Collectif", categorie: "Documentaire", image: "" },
+      { titre: "Dictionnaire Larousse 2024", auteur: "Larousse", categorie: "Référence", image: "" },
+      { titre: "Sciences et Vie Junior", auteur: "Collectif", categorie: "Magazine", image: "" },
+    ];
+
+    // Cela montre comment on peut stocker les informations des livres dans un tableau d'objets JavaScript pour les utiliser dans la recherche et l'affichage des résultats. Dans une vraie application, ces données seraient probablement récupérées depuis une base de données ou un fichier JSON.
+    const input = document.getElementById('query');
+    const Liste_deroulante = document.getElementById('search-results');
+    const resultsList = document.getElementById('results-list');
+
+    // les fonctions suivantes permettent de gérer la recherche et l'affichage des résultats dans le Liste_deroulante
+    function iconeCategorie(cat) {
+      const c = cat.toLowerCase();
+      if (c.includes('manga')) return '📖';
+      if (c.includes('roman')) return '📚';
+      if (c.includes('documentaire')) return '🔬';
+      if (c.includes('magazine')) return '📰';
+      if (c.includes('référence')) return '📕';
+      return '📗';
+    }
+    //  cette fonction permet de retourner une icône en fonction de la catégorie du livre pour rendre les résultats plus visuels. On peut bien sûr personnaliser les icônes ou utiliser de vraies images dans une version plus avancée de l'application.
+    function highlightText(text, query) {
+      if (!query) return text;
+      const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+      return text.replace(regex, '<mark style="background:#e8f5a0;border-radius:2px;padding:0 1px;">$1</mark>');
+    }
+    // la foonction afficherResultats prend la requête de recherche, filtre les livres du CDI en fonction de cette requête, et affiche les résultats dans le Liste_deroulante. Elle gère également les cas où il n'y a pas de résultats ou lorsque la requête est trop courte pour éviter d'afficher des résultats non pertinents.
+    function afficherResultats(query) {
+      const q = query.trim().toLowerCase();
+      if (q.length < 2) { Liste_deroulante.classList.remove('visible'); return; }
+
+      const resultats = livresCDI.filter(livre =>
+        livre.titre.toLowerCase().includes(q) ||
+        livre.auteur.toLowerCase().includes(q) ||
+        livre.categorie.toLowerCase().includes(q)
+      );
+
+      resultsList.innerHTML = '';
+
+      if (resultats.length === 0) {
+        resultsList.innerHTML = '<div class="no-result">Aucun livre trouvé pour « ' + query + ' »</div>';
+      } else {
+        resultats.slice(0, 6).forEach(livre => {
+          const item = document.createElement('div');
+          item.className = 'result-item';
+
+          const coverHTML = livre.image
+            ? `<img class="result-cover" src="${livre.image}" alt="${livre.titre}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+               <div class="result-cover-placeholder" style="display:none;">${iconeCategorie(livre.categorie)}</div>`
+            : `<div class="result-cover-placeholder">${iconeCategorie(livre.categorie)}</div>`;
+
+          item.innerHTML = `
+            ${coverHTML}
+            <div class="result-info">
+              <div class="result-title">${highlightText(livre.titre, query.trim())}</div>
+              <div class="result-meta">${highlightText(livre.auteur, query.trim())}</div>
+              <span class="result-tag">${livre.categorie}</span>
+            </div>`;
+          // la fonction "item.addEventListener" permet de rendre chaque résultat cliquable, redirigeant l'utilisateur vers une page de détails du livre (ici "livre.html") avec les informations du livre passées en paramètres d'URL. Cela permet d'afficher les détails du livre sélectionné sur une nouvelle page. Bien sûr, dans une application réelle, il serait préférable d'utiliser des identifiants uniques pour les livres plutôt que de passer toutes les informations dans l'URL, mais cela illustre le concept de base.
+          item.addEventListener('click', () => {
+            window.location.href = `livre.html?titre=${encodeURIComponent(livre.titre)}&auteur=${encodeURIComponent(livre.auteur)}&categorie=${encodeURIComponent(livre.categorie)}&image=${encodeURIComponent(livre.image)}`;
+          });
+
+          resultsList.appendChild(item);
+        });
+
+        if (resultats.length > 6) {
+          const plus = document.createElement('div');
+          plus.className = 'no-result';
+          plus.style.color = '#1a7a3a';
+          plus.textContent = `+ ${resultats.length - 6} autre(s) résultat(s)…`;
+          resultsList.appendChild(plus);
+        }
+      }
+      Liste_deroulante.classList.add('visible');
+    }
+
+    input.addEventListener('input', (e) => afficherResultats(e.target.value));
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.group')) Liste_deroulante.classList.remove('visible');
+    });
+
+    input.addEventListener('keydown', (e) => {
+      const items = resultsList.querySelectorAll('.result-item');
+      const active = resultsList.querySelector('.result-item.active');
+      let idx = Array.from(items).indexOf(active);
+
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        if (active) active.classList.remove('active');
+        const next = items[Math.min(idx + 1, items.length - 1)];
+        if (next) { next.classList.add('active'); next.style.background = '#e0f0e8'; }
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (active) active.classList.remove('active');
+        const prev = items[Math.max(idx - 1, 0)];
+        if (prev) { prev.classList.add('active'); prev.style.background = '#e0f0e8'; }
+      } else if (e.key === 'Enter' && active) {
+        active.click();
+      } else if (e.key === 'Escape') {
+        Liste_deroulante.classList.remove('visible');
+      }
+    });
+  </script>
 </body>
 </html>
-
-
