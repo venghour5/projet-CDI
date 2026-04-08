@@ -4,15 +4,15 @@
 
 // Variables à modifier manuellement
 #define LED_PIN 23
-#define LEDS_TOTAL 60 // Nombre total de leds
-#define LUMINOSITE 170 // 255 max
+#define LEDS_TOTAL 108 // Nombre total de leds
 const char* ssid = "TP-Link_AP_1D6A";
 const char* password = "31901642";
 
 // Par défaut, changera plus tard
-int num_leds = 60; // Valeur pour chaque section
+int num_leds = 500; // Valeur pour chaque section, défaut 500 (largement l'entièreté des leds)
 int num_sections = 1; // Une par défaut (toute la bande)
 int vitesse = 1; // Pour le mode arc en ciel
+int luminosite = 255;
 CRGB couleur = CRGB(255, 255, 255);
 
 // Options
@@ -71,6 +71,12 @@ void policeLED() {
   server.send(200, "text/plain", "mode police activé");
 }
 
+void luminositeLED() {
+  int nouvelle_luminosite = server.arg("l").toInt();
+  luminosite = nouvelle_luminosite;
+  FastLED.setBrightness(luminosite);
+}
+
 void setup() {
   Serial.begin(115200);
 
@@ -95,14 +101,15 @@ void setup() {
   server.on("/sectionLED", HTTP_GET, sectionLED);
   server.on("/enleverAnciennesLEDs", HTTP_GET, activerEnleverAnciennesLEDs);
   server.on("/policeLED", HTTP_GET, policeLED);
-
+  server.on("/luminositeLED", HTTP_GET, luminositeLED);
+  
   server.begin();
 
   Serial.println("Serveur démarré.");
 
-  FastLED.setBrightness(LUMINOSITE);
+  FastLED.setBrightness(luminosite);
   Serial.print("Luminosité à ");
-  Serial.print(LUMINOSITE);
+  Serial.print(luminosite);
 }
 
 void loop() {
