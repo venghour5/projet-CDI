@@ -170,6 +170,7 @@ main {
   padding: 2rem;
 }
 
+
 .intro {
   text-align: center;
 }
@@ -291,10 +292,10 @@ main {
   }
 }
 
-.container {
+/* .container {
   max-width: 100rem;
   margin: auto;
-}
+} */
 
 /* Footer */
 .row {
@@ -437,6 +438,11 @@ main {
 }
 
 /* page espace livres  */
+
+.container-espaces-livres {
+  padding : 8rem;
+}
+
 .section {
   justify-content: center;
   box-shadow: 0 4px 10px #0000000a;
@@ -1433,4 +1439,433 @@ body {
 /* Smooth scroll */
 html {
   scroll-behavior: smooth;
+}
+
+/* ============================================================
+   PAGES RESSOURCES & ORIENTATION
+   ============================================================ */
+
+/* Supprime le padding global du main sur ces pages */
+body:has(.page-bandeau) main {
+  padding: 0;
+}
+
+/* --- Bandeau haut de page (partagé Ressources + Orientation) --- */
+.page-bandeau {
+  background-color: #1a1a1a;
+  color: white;
+  text-align: center;
+  padding: 60px 20px;
+}
+
+.page-bandeau h1 {
+  font-size: 2rem;
+  margin-bottom: 15px;
+  color: white;
+}
+
+.page-bandeau p {
+  font-size: 1rem;
+  color: #cccccc;
+  max-width: 700px;
+  margin: 0 auto 20px auto;
+  line-height: 1.7;
+}
+
+.page-bandeau a.btn-bandeau {
+  display: inline-block;
+  background-color: #88c6d6;
+  color: white;
+  padding: 12px 25px;
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: bold;
+  margin-top: 10px;
+}
+
+.page-bandeau a.btn-bandeau:hover {
+  background-color: #6bb3c5;
+}
+
+/* Lien retour dans le bandeau (Orientation uniquement) */
+.page-bandeau .retour-lien {
+  display: inline-block;
+  color: #88c6d6;
+  text-decoration: none;
+  font-size: 0.9rem;
+  margin-bottom: 15px;
+}
+
+.page-bandeau .retour-lien:hover {
+  text-decoration: underline;
+}
+
+/* --- Contenu principal --- */
+.page-contenu {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 40px 20px 60px;
+}
+
+/* --- Titre de section --- */
+.section-titre {
+  font-size: 1.5rem;
+  color: #222;
+  margin-top: 40px;
+  margin-bottom: 20px;
+  padding-bottom: 8px;
+  border-bottom: 3px solid #88c6d6;
+}
+
+.section-intro {
+  color: #555;
+  font-size: 0.95rem;
+  line-height: 1.7;
+  margin-bottom: 20px;
+}
+
+/* --- Bouton lien --- */
+.btn-lien {
+  display: inline-block;
+  background-color: #88c6d6;
+  color: white;
+  padding: 10px 20px;
+  border-radius: 6px;
+  text-decoration: none;
+  font-weight: bold;
+}
+
+.btn-lien:hover {
+  background-color: #6bb3c5;
+}
+
+/* --- Bloc article (presse) --- */
+.article-bloc {
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  padding: 25px;
+  margin-bottom: 30px;
+}
+
+.article-bloc h2 {
+  font-size: 1.4rem;
+  margin-bottom: 5px;
+  color: #222;
+}
+
+.article-date {
+  font-size: 0.8rem;
+  color: #888;
+  margin-bottom: 15px;
+  display: block;
+}
+
+.article-bloc img {
+  width: 100%;
+  max-height: 280px;
+  object-fit: cover;
+  border-radius: 8px;
+  margin-bottom: 15px;
+}
+
+.article-bloc p {
+  color: #555;
+  line-height: 1.7;
+  margin-bottom: 15px;
+}
+
+/* --- Liste de sites (Ressources) --- */
+.sites-liste {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin-bottom: 30px;
+}
+
+/* --- Carte site web (partagée Ressources + Orientation) --- */
+.site-carte {
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  padding: 20px;
+}
+
+.site-carte .site-emoji {
+  font-size: 1.5rem;
+  margin-bottom: 8px;
+  display: block;
+}
+
+.site-carte h3 {
+  font-size: 1rem;
+  color: #222;
+  margin-bottom: 8px;
+  line-height: 1.3;
+}
+
+.site-carte p {
+  color: #555;
+  font-size: 0.85rem;
+  line-height: 1.6;
+  margin-bottom: 10px;
+}
+
+.site-carte a {
+  color: #88c6d6;
+  font-weight: bold;
+  text-decoration: none;
+  font-size: 0.85rem;
+}
+
+.site-carte a:hover {
+  text-decoration: underline;
+}
+
+/* --- Badge de catégorie --- */
+.site-badge {
+  display: inline-block;
+  background-color: #e8f6fa;
+  color: #5a9fb0;
+  padding: 2px 10px;
+  border-radius: 10px;
+  font-size: 0.72rem;
+  font-weight: bold;
+  margin-bottom: 8px;
+}
+
+.site-badge.etudes {
+  background-color: #e8eefa;
+  color: #5a6fb0;
+}
+
+.site-badge.orientation {
+  background-color: #f0e8fa;
+  color: #7a5ab0;
+}
+
+/* --- Grille guides Onisep (Ressources) --- */
+.guides-grille {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.guide-carte {
+  background: #f0f8fb;
+  border: 1px solid #c8e6f0;
+  border-radius: 10px;
+  padding: 20px 15px;
+  text-align: center;
+}
+
+.guide-carte .guide-emoji {
+  font-size: 2.5rem;
+  display: block;
+  margin-bottom: 10px;
+}
+
+.guide-carte p {
+  font-size: 0.82rem;
+  color: #444;
+  line-height: 1.4;
+  margin: 0;
+}
+
+/* --- Note info (Ressources) --- */
+.note-info {
+  background-color: #e8f6fa;
+  border-left: 4px solid #88c6d6;
+  padding: 15px 20px;
+  border-radius: 0 8px 8px 0;
+  margin-bottom: 30px;
+  font-size: 0.92rem;
+  color: #3a7a8c;
+}
+
+/* --- Bloc CTA vers Orientation (Ressources) --- */
+.cta-orientation {
+  background-color: #1a1a1a;
+  color: white;
+  border-radius: 10px;
+  padding: 30px 25px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-top: 20px;
+}
+
+.cta-orientation h2 {
+  font-size: 1.3rem;
+  color: white;
+  margin-bottom: 8px;
+}
+
+.cta-orientation p {
+  color: #aaa;
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.cta-orientation .btn-lien {
+  white-space: nowrap;
+}
+
+/* --- Navigation rapide (Orientation) --- */
+.nav-rapide {
+  background-color: #f5f5f5;
+  border-bottom: 1px solid #ddd;
+  padding: 12px 20px;
+  text-align: center;
+}
+
+.nav-rapide a {
+  display: inline-block;
+  margin: 5px 8px;
+  color: #333;
+  text-decoration: none;
+  background: white;
+  border: 1px solid #ddd;
+  padding: 7px 16px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+}
+
+.nav-rapide a:hover {
+  background-color: #88c6d6;
+  color: white;
+  border-color: #88c6d6;
+}
+
+/* --- Cartes personnes ressources (Orientation) --- */
+.personnes-liste {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 30px;
+}
+
+.personne-carte {
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  padding: 18px 20px;
+  display: flex;
+  gap: 15px;
+  align-items: flex-start;
+}
+
+.personne-emoji {
+  font-size: 1.8rem;
+  flex-shrink: 0;
+}
+
+.personne-carte h3 {
+  font-size: 1rem;
+  color: #222;
+  margin-bottom: 5px;
+}
+
+.personne-carte p {
+  font-size: 0.88rem;
+  color: #555;
+  line-height: 1.6;
+  margin-bottom: 5px;
+}
+
+.personne-carte a {
+  color: #88c6d6;
+  font-size: 0.85rem;
+  font-weight: bold;
+  text-decoration: none;
+}
+
+.personne-carte a:hover {
+  text-decoration: underline;
+}
+
+/* --- Boutons filtres (Orientation) --- */
+.filtres {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.filtre-btn {
+  padding: 7px 18px;
+  border-radius: 20px;
+  border: 1.5px solid #ddd;
+  background: white;
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: #555;
+  font-family: 'DM Sans', sans-serif;
+}
+
+.filtre-btn:hover {
+  background-color: #88c6d6;
+  border-color: #88c6d6;
+  color: white;
+}
+
+.filtre-btn.actif {
+  background-color: #88c6d6;
+  border-color: #88c6d6;
+  color: white;
+  font-weight: bold;
+}
+
+/* --- Grille sitothèque (Orientation) --- */
+.sites-grille {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 15px;
+  margin-bottom: 30px;
+}
+
+/* --- Liens rapides pills (Orientation) --- */
+.liens-rapides {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.lien-pill {
+  display: inline-block;
+  background: #f5f5f5;
+  border: 1px solid #ddd;
+  color: #333;
+  padding: 8px 18px;
+  border-radius: 20px;
+  text-decoration: none;
+  font-size: 0.88rem;
+}
+
+.lien-pill:hover {
+  background-color: #88c6d6;
+  border-color: #88c6d6;
+  color: white;
+}
+
+/* --- Responsive Ressources & Orientation --- */
+@media (max-width: 600px) {
+  .guides-grille {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .cta-orientation {
+    flex-direction: column;
+    text-align: center;
+  }
+  .sites-grille {
+    grid-template-columns: 1fr;
+  }
+  .personne-carte {
+    flex-direction: column;
+    gap: 8px;
+  }
 }
