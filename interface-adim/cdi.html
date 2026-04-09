@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Gestion CDI - Administration des modules ESP</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css" />
+</head>
+<body class="dashboard-body">
+
+    <header class="top-bar">
+        <div class="header-left">
+            <a href="cdi.html" class="nav-btn active">Zone CDI</a>
+            <a href="esp.html" class="nav-btn">Modules ESP</a>
+        </div>
+
+        <div class="header-right">
+            <span class="admin-name"><i class="fa-regular fa-user"></i> Admin Mme -------</span>
+            <a href="index.html" class="logout-link">Déconnexion</a>
+        </div>
+    </header>
+
+    <div class="main-wrapper">
+        <aside class="sidebar">
+            <h2 class="sidebar-title">Zones du CDI</h2>
+
+            <div class="module-item active">
+                <span class="module-name">Roman</span>
+                <i class="fa-solid fa-wifi"></i>
+                <span class="status-badge on">ON</span>
+            </div>
+
+            <div class="module-item">
+                <span class="module-name">BD</span>
+                <i class="fa-solid fa-wifi-slash"></i>
+                <span class="status-badge off">OFF</span>
+            </div>
+
+            <div class="module-item">
+                <span class="module-name">Manga</span>
+                <i class="fa-solid fa-wifi"></i>
+                <span class="status-badge off">OFF</span>
+            </div>
+
+            <div class="module-item empty"></div>
+            <div class="module-item empty"></div>
+            <div class="module-item empty"></div>
+
+            <div class="add-container">
+                <button class="btn-add">
+                    <i class="fa-solid fa-plus"></i> Ajouter une zone
+                </button>
+            </div>
+        </aside>
+
+        <section class="content-area">
+            <div class="content-header-card">
+                <div class="module-info">
+                    <span class="title">Zone : Roman</span>
+                    <button class="btn-icon" aria-label="Modifier la zone">
+                        <i class="fa-regular fa-pen-to-square"></i>
+                    </button>
+                    <span class="ip-address">ESP32 : 10.1.1.1</span>
+                </div>
+
+                <button class="btn-delete" aria-label="Supprimer le module">
+                    <i class="fa-regular fa-trash-can"></i>
+                </button>
+            </div>
+
+            <div class="panels-container">
+                <div class="panel list-panel">
+                    <div class="panel-title">Ressources associées</div>
+
+                    <div class="list-item">
+                        <span>Roman 1</span>
+                        <i class="fa-regular fa-pen-to-square"></i>
+                    </div>
+                    <div class="list-item">
+                        <span>Roman 2</span>
+                        <i class="fa-regular fa-pen-to-square"></i>
+                    </div>
+                    <div class="list-item">
+                        <span>Roman 3</span>
+                        <i class="fa-regular fa-pen-to-square"></i>
+                    </div>
+                    <div class="list-item">
+                        <span>Roman 4</span>
+                        <i class="fa-regular fa-pen-to-square"></i>
+                    </div>
+                </div>
+
+                <div class="panel history-panel">
+                    <div class="panel-title">Historique</div>
+
+                    <div class="list-item">
+                        <span>Module Roman connecté</span>
+                        <span>10:21</span>
+                    </div>
+                    <div class="list-item">
+                        <span>Activation de la zone Roman</span>
+                        <span>10:18</span>
+                    </div>
+                    <div class="list-item">
+                        <span>Module BD hors ligne</span>
+                        <span>09:52</span>
+                    </div>
+                    <div class="list-item">
+                        <span>Modification adresse ESP32</span>
+                        <span>09:30</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+</body>
+</html>
