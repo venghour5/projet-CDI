@@ -145,9 +145,57 @@ $stmt->execute([$currentZoneId]);
 $zoneInfo = $stmt->fetch(PDO::FETCH_ASSOC);
 $hasCurrentZone = !empty($zoneInfo) && isset($zoneInfo['id_zone']);
 
-$stmtRes = $pdo->prepare("SELECT * FROM ressources WHERE id_zone = ? ORDER BY titre ASC");
-$stmtRes->execute([$currentZoneId]);
-$ressources = $stmtRes->fetchAll(PDO::FETCH_ASSOC);
+$stmtZoneModules = $pdo->prepare("SELECT id_module, ip_address FROM zones WHERE id_zone = ? ORDER BY id_module ASC");
+$stmtZoneModules->execute([$currentZoneId]);
+$zoneModules = $stmtZoneModules->fetchAll(PDO::FETCH_ASSOC);
+
+$zoneModuleRows = [];
+$zoneModuleIds = [];
+foreach ($zoneModules as $module) {
+    $moduleId = trim((string)($module['id_module'] ?? ''));
+    $ipAddress = trim((string)($module['ip_address'] ?? ''));
+
+    if ($moduleId !== '') {
+        $zoneModuleRows[] = [
+            'id_module' => $moduleId,
+            'label' => 'ESP ' . ($ipAddress !== '' ? $ipAddress : $moduleId),
+        ];
+        $zoneModuleIds[] = $moduleId;
+    }
+}
+
+$resourcesByModule = [];
+if (!empty($zoneModuleIds)) {
+    $modulePlaceholders = implode(',', array_fill(0, count($zoneModuleIds), '?'));
+    $stmtResByModule = $pdo->prepare("SELECT id_module, titre, auteur, cote, type, disponible FROM ressources WHERE id_module IN ($modulePlaceholders) ORDER BY id_module ASC, titre ASC");
+    $stmtResByModule->execute($zoneModuleIds);
+    $moduleResourcesRows = $stmtResByModule->fetchAll(PDO::FETCH_ASSOC);
+
+    foreach ($moduleResourcesRows as $moduleResource) {
+        $moduleKey = trim((string)($moduleResource['id_module'] ?? ''));
+        if ($moduleKey === '') {
+            continue;
+        }
+
+        if (!isset($resourcesByModule[$moduleKey])) {
+            $resourcesByModule[$moduleKey] = [];
+        }
+
+        $title = trim((string)($moduleResource['titre'] ?? ''));
+        $author = trim((string)($moduleResource['auteur'] ?? ''));
+        $cote = trim((string)($moduleResource['cote'] ?? ''));
+        $type = trim((string)($moduleResource['type'] ?? ''));
+        $isAvailable = isset($moduleResource['disponible']) ? (int)$moduleResource['disponible'] : null;
+
+        $resourcesByModule[$moduleKey][] = [
+            'titre' => $title !== '' ? $title : '--',
+            'auteur' => $author !== '' ? $author : '--',
+            'cote' => $cote !== '' ? $cote : '--',
+            'type' => $type !== '' ? $type : '--',
+            'disponible' => $isAvailable === null ? '--' : ($isAvailable === 1 ? 'Oui' : 'Non'),
+        ];
+    }
+}
 
 $feedbackMessage = '';
 $feedbackBg = '#89ff57';
@@ -239,7 +287,7 @@ if ($feedbackMessage === '' && isset($_GET['error'])) {
 
             <div class="content-header-card">
                 <div class="module-info">
-                    <span class="title">Genre : <?php echo htmlspecialchars($zoneInfo['nom_zone'] ?? 'Aucune'); ?></span>
+                    <span class="title">Zone : <?php echo htmlspecialchars($zoneInfo['nom_zone'] ?? 'Aucune'); ?></span>
 
                     <?php if ($hasCurrentZone): ?>
                         <button
@@ -254,7 +302,6 @@ if ($feedbackMessage === '' && isset($_GET['error'])) {
                         </button>
                     <?php endif; ?>
 
-                    <span class="ip-address">ESP32 : <?php echo htmlspecialchars($zoneInfo['ip_address'] ?? 'Non assigne'); ?></span>
                 </div>
 
                 <?php if ($hasCurrentZone): ?>
@@ -272,49 +319,52 @@ if ($feedbackMessage === '' && isset($_GET['error'])) {
             </div>
 
             <div class="panels-container">
-                <div class="panel">
-                    <div class="panel-title">Ressources associees</div>
+                <div class="panel esp-associated-panel">
+                    <div class="panel-title">ESP associes</div>
 
-                    <?php if (!empty($ressources)): ?>
-                        <?php foreach ($ressources as $res): ?>
-                            <div class="list-item">
-                                <span>
-                                    <strong><?php echo htmlspecialchars($res['titre']); ?></strong>
-                                    - <?php echo htmlspecialchars($res['auteur'] ?? ''); ?>
-                                </span>
-
-                                <?php if (!empty($res['id_ressources']) && $hasCurrentZone): ?>
-                                    <button
-                                        type="button"
-                                        class="btn-inline-icon edit-resource-btn"
-                                        title="Modifier le nom du livre"
-                                        data-resource-id="<?php echo (int)$res['id_ressources']; ?>"
-                                        data-resource-title="<?php echo htmlspecialchars($res['titre'], ENT_QUOTES); ?>"
-                                    >
-                                        <i class="fa-regular fa-pen-to-square"></i>
-                                    </button>
-                                <?php endif; ?>
-                            </div>
-                        <?php endforeach; ?>
+                    <?php if (!empty($zoneModuleRows)): ?>
+                        <div class="esp-associated-list">
+                            <?php foreach ($zoneModuleRows as $moduleRow):
+                                $moduleResourceList = $resourcesByModule[$moduleRow['id_module']] ?? [];
+                            ?>
+                                <div class="esp-group">
+                                    <div class="esp-module-name"><?php echo htmlspecialchars($moduleRow['label']); ?></div>
+                                    <div class="esp-table-wrap">
+                                        <table class="esp-resource-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Titre</th>
+                                                    <th>Auteur</th>
+                                                    <th>Cote</th>
+                                                    <th>Type</th>
+                                                    <th>Disponible</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                        <?php if (!empty($moduleResourceList)): ?>
+                                            <?php foreach ($moduleResourceList as $resourceItem): ?>
+                                                <tr>
+                                                    <td><?php echo htmlspecialchars($resourceItem['titre']); ?></td>
+                                                    <td><?php echo htmlspecialchars($resourceItem['auteur']); ?></td>
+                                                    <td><?php echo htmlspecialchars($resourceItem['cote']); ?></td>
+                                                    <td><?php echo htmlspecialchars($resourceItem['type']); ?></td>
+                                                    <td><?php echo htmlspecialchars($resourceItem['disponible']); ?></td>
+                                                </tr>
+                                            <?php endforeach; ?>
+                                        <?php else: ?>
+                                                <tr>
+                                                    <td colspan="5" class="esp-line-empty">Aucune ressource liee</td>
+                                                </tr>
+                                        <?php endif; ?>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
                     <?php else: ?>
-                        <div class="list-item">Aucune ressource dans cette zone</div>
+                        <div class="esp-associated-empty-state">Aucun module ESP associe</div>
                     <?php endif; ?>
-                </div>
-
-                <div class="panel history-panel">
-                    <div class="panel-title">Historique & Etat</div>
-                    <div class="list-item">
-                        <span>Dernier signal</span>
-                        <span><?php echo htmlspecialchars($zoneInfo['dernier_signal'] ?? '--'); ?></span>
-                    </div>
-                    <div class="list-item">
-                        <span>Statut</span>
-                        <span><?php echo htmlspecialchars($zoneInfo['statut'] ?? 'Inconnu'); ?></span>
-                    </div>
-                    <div class="list-item">
-                        <span>Batterie</span>
-                        <span><?php echo isset($zoneInfo['etat_batterie']) ? (int)$zoneInfo['etat_batterie'] . '%' : '--'; ?></span>
-                    </div>
                 </div>
             </div>
         </section>
@@ -537,6 +587,7 @@ if ($feedbackMessage === '' && isset($_GET['error'])) {
                 deleteZoneForm.submit();
             });
         }
+
     </script>
 </body>
 </html>
