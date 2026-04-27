@@ -146,7 +146,7 @@ if ($id > 0) {
       <div class="footer-col">
         <h4>Informations</h4>
         <ul>
-          <li ><a href="#">Mentions légales</a></li>
+          <li ><a href="./Mentions légales.html">Mentions légales</a></li>
           <li><a href="#">Mentions RGPD</a></li>
         </ul>
       </div>

@@ -17,13 +17,10 @@
           <a href="index.html">
             <img src="../Images/logo L.png" alt="logo du lycée">
             CDI <span>-</span> Lycée
-
           </a>
         </div>
         <ul class="nav-links">
-          </div>
           <li><a href="../pages/Espaces livres.html">Espaces Livres</a></li>
-          <li><a href="../pages/Ressources.html">Ressources</a></li>
           <li><a href="./Recherche.html">Recherche</a></li>
           <li><a href="#">Accéder aux réservation</a></li>
     </nav>
@@ -32,7 +29,7 @@
     </div>
   </header>
 
-  <main class="container">
+  <main class="container-espaces-livres">
     <h1>Espaces livres</h1>
     <!-- NOUVEAUTÉS -->
     <section class="section">
@@ -43,19 +40,19 @@
         <div class="ronger-image">
 
           <div class="book-img"></div>
-          <img src="../Images/img.png" alt="Nouveautés 1">
+          <img src="..\Images\img.png" alt="Nouveautés 1">
           <p>Nouveautés 1</p>
         </div>
 
         <div class="ronger-image">
           <div class="book-img"></div>
-          <img src="../Images/img.png" alt="Nouveautés 2">
+          <img src="..\Images\img.png" alt="Nouveautés 2">
           <p>Nouveautés 2</p>
         </div>
 
         <div class="ronger-image">
           <div class="book-img"></div>
-          <img src="../Images/img.png" alt="Nouveautés 3">
+          <img src="..\Images\img.png" alt="Nouveautés 3">
           <p>Nouveautés 3</p>
         </div>
       </div>
@@ -63,6 +60,7 @@
         <button class="btn">Découvrir</button>
       </div>
     </section>
+
     <!-- LES ROMANS -->
     <section class="section">
       <h2>Les Romans</h2>
@@ -71,19 +69,19 @@
       <div class="livres-colonnes" id="romans-container">
         <div class="ronger-image">
           <div class="book-img"></div>
-          <img src="../Images/img.png" alt="livres" width="150" height="200">
+          <img src="..\Images\img.png" alt="livres" width="150" height="200">
           <p>Roman 1</p>
         </div>
 
         <div class="ronger-image">
           <div class="book-img"></div>
-          <img src="../Images/img.png" alt="livres" width="150" height="200">
+          <img src="..\Images\img.png" alt="livres" width="150" height="200">
           <p>Roman 2</p>
         </div>
 
         <div class="ronger-image">
           <div class="book-img"></div>
-          <img src="../Images/img.png" alt="livres" width="150" height="200">
+          <img src="..\Images\img.png" alt="livres" width="150" height="200">
           <p>Roman 3</p>
         </div>
       </div>
@@ -102,7 +100,7 @@
           chacun à comprendre l’importance de préserver la biodiversité et à agir pour un avenir durable</p>
 
         <div class="image-container">
-          <img src="../Images/img.png" alt="livres">
+          <img src="..\Images\img.png" alt="livres">
         </div>
         <div class="btn-container">
           <button class="btn">Découvrir</button>
@@ -121,7 +119,7 @@
           sur le bien‑être animal, l’éducation et la préservation de la nature
         </p>
         <div class="image-container">
-          <img src="../Images/img.png" alt="livres">
+          <img src="..\Images\img.png" alt="livres">
         </div>
         <div class="btn-container">
           <button class="btn">Découvrir</button>
@@ -164,64 +162,57 @@
             ? livre.image
             : '../Images/img.png';
           return `
-            <div class="ronger-image">
-                <div class="book-img"></div>
-                <img src="${imgSrc}" alt="${livre.titre}" width="150" height="200"
-                     onerror="this.src='../Images/img.png'">
-                <p>${livre.titre}</p>
-                <small>${livre.auteur}</small>
-            </div>
-        `;
+              <div class="ronger-image">
+                  <div class="book-img"></div>
+                  <img src="${imgSrc}" alt="${livre.titre}" width="150" height="200"
+                      onerror="this.src='../Images/img.png'">
+                  <p>${livre.titre}</p>
+                  <small>${livre.auteur}</small>
+              </div>
+          `;
         }).join('');
       }
 
       chargerLivres();
     </script>
   </main>
-    <footer class="footer">
-      <div class="container">
-        <div class="row">
-
-          <div class="footer-col">
-            <h4>CDI - Lycée</h4>
-          </div>
-
-          <div class="footer-col">
-            <h4>Coordonnées</h4>
-            <p>LYCÉE PROFESSIONNEL LAVOISIER</p>
-            <p>8 RUE JULES FERRY</p>
-            <p>60110 MERU</p>
-          </div>
-
-          <div class="footer-col">
-            <h4>Informations</h4>
-            <ul>
-              <li><a href="#">Mentions légales</a></li>
-              <li><a href="#">Mentions RGPD</a></li>
-            </ul>
-          </div>
-
-          <div class="footer-col">
-            <h4>Suivez-nous</h4>
-            <div class="resaux-social">
-              <a href="https://www.facebook.com/profile.php?id=100086643024970&locale=fr_FR"><img
-                  src="/Images/ressaux/facebook.png" alt="Facebook"></a>
-              <a href="https://www.youtube.com/channel/UCAHjFYvFlPExoVpSqldZX5A"><img src="/Images/ressaux/youtube.png"
-alt="Youtube"></i></a>
-              <a href="https://www.instagram.com/lyceedesmetiers_lavoisier_meru/?g=5"><img
-                  src="/Images/ressaux/instagram.png" alt="Instagram"></a>
-              <a
-                href="https://www.linkedin.com/company/lyc%C3%A9e-des-m%C3%A9tiers-des-services-antoine-lavoisier/posts/?feedView=all&viewAsMember=true"><img
-                  src="/Images/ressaux/linkedin.png" alt="Linkedin"></i></a>
-            </div>
-          </div>
-
+  <footer class="footer">
+    <div class="container">
+      <div class="row">
+        <div class="footer-col">
+          <h4>CDI - Lycée</h4>
         </div>
-
-        <p style="text-align:center; margin-top:30px;">2025 © Tous droits réservés.</p>
+        <div class="footer-col">
+          <h4>Coordonnées</h4>
+          <p>LYCÉE PROFESSIONNEL LAVOISIER</p>
+          <p>8 RUE JULES FERRY</p>
+          <p>60110 MERU</p>
+        </div>
+        <div class="footer-col">
+          <h4>Informations</h4>
+          <ul>
+            <li><a href="./Mentions legales.html">Mentions légales</a></li>
+            <li><a href="./Mentions RGPD.html">Mentions RGPD</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h4>Suivez-nous</h4>
+          <div class="resaux-social">
+            <a href="https://www.facebook.com/profile.php?id=100086643024970&locale=fr_FR"><img
+                src="../Images/ressaux/facebook.png" alt="Facebook"></a>
+            <a href="https://www.youtube.com/channel/UCAHjFYvFlPExoVpSqldZX5A"><img src="../Images/ressaux/youtube.png"
+                alt="Youtube"></a>
+            <a href="https://www.instagram.com/lyceedesmetiers_lavoisier_meru/?g=5"><img
+                src="../Images/ressaux/instagram.png" alt="Instagram"></a>
+            <a
+              href="https://www.linkedin.com/company/lyc%C3%A9e-des-m%C3%A9tiers-des-services-antoine-lavoisier/posts/?feedView=all&viewAsMember=true"><img
+                src="../Images/ressaux/linkedin.png" alt="Linkedin"></a>
+          </div>
+        </div>
       </div>
-    </footer>
-
+      <p style="text-align:center; margin-top:30px;">2026 © Tous droits réservés.</p>
+    </div>
+  </footer>
 </body>
 
 </html>

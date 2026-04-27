@@ -1,95 +1,189 @@
 <!DOCTYPE html>
 <html lang="fr">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Bienvenue au CDI</title>
+  <title>Ressources - CDI Lycée Lavoisier</title>
   <link rel="stylesheet" href="../styles/style_test_de_recherche.css">
   <link rel="icon" type="image/png" href="../Images/cropped-Lycee-Lavoisier-Meru_Plan-de-travail-1-copie-4.png">
+
+
 </head>
+
 <body>
-<header>
+  <header>
     <nav>
-    <div class="navbar">
-      <div class="logo-lycee">
-        <a href="index.html">
-          <img src="../Images/logo L.png" alt="logo du lycée"> 
-          CDI <span>-</span> Lycée
-          
-        </a>
-      </div>
-      <ul class="nav-links">
-        <div class="group">
-  <svg viewBox="0 0 24 24" aria-hidden="true" class="search-icon">
-    <g>
-      <path
-        d="M21.53 20.47l-3.66-3.66C19.195 15.24 20 13.214 20 11c0-4.97-4.03-9-9-9s-9 4.03-9 9 4.03 9 9 9c2.215 0 4.24-.804 5.808-2.13l3.66 3.66c.147.146.34.22.53.22s.385-.073.53-.22c.295-.293.295-.767.002-1.06zM3.5 11c0-4.135 3.365-7.5 7.5-7.5s7.5 3.365 7.5 7.5-3.365 7.5-7.5 7.5-7.5-3.365-7.5-7.5z"></path>
-    </g>
-  </svg>
-    <input id="query" class="input" type="search" placeholder="Rechercher..." name="searchbar" autocomplete="off" />
-    <div id="search-results">
-      <div class="result-header">Résultats</div>
-      <div id="results-list"></div>
-    </div>
-    </div>
-        <li><a href="../pages/Espaces livres.html">Espaces Livres</a></li>
-        <li><a href="../pages/Ressources.html">Ressources</a></li>
-        <li><a href="./Recherche.html">Recherche</a></li>
-        <li><a href="#">Accéder aux réservation</a></li>
-      </nav>
-    </div>
+      <div class="navbar">
+        <div class="logo-lycee">
+          <a href="index.html">
+            <img src="../Images/logo L.png" alt="logo du lycée">
+            CDI <span>-</span> Lycée
+          </a>
+        </div>
+        <ul class="nav-links">
+          <li><a href="../pages/Espaces livres.html">Espaces Livres</a></li>
+          <li><a href="../pages/Ressources.html">Ressources</a></li>
+          <li><a href="./Recherche.html">Recherche</a></li>
+          <li><a href="#">Accéder aux réservation</a></li>
         </ul>
       </div>
+    </nav>
   </header>
 
-<main class="container ressources">
-    <article>
-        <h1>Espace Élèves - Ressources utiles</h1>
-        <section>
-            <h2>Tous les jours, la presse en ligne</h2>
-                <span>05/11/2020</span>
-                <img src="../Images/journaux.jpg" alt="journaux" class="article-image"/>
-            <p>Accédez gratuitement à plusieurs journaux et magazines en ligne via le portail ePresse.fr mis à disposition par le CDI du lycée. Vous y trouverez des titres tels que Le Monde, L'Equipe, Les Echos, Paris Match, et bien d'autres encore. Pour y accéder, connectez-vous au réseau du lycée et rendez-vous sur le site ePresse.fr. Bonne lecture !</p>
-            <p class="actu link"><a href="https://lirelactu.fr/" target="_blank" rel="noopener">Accéder à lirelactu.fr</a></p>
-        </section>
-    </article>
-</main>
+  <main>
 
- <footer class="footer">
-  <div class="container">
-    <div class="row">
+    <!-- Bandeau haut de page -->
+    <div class="page-bandeau">
+      <h1>Des ressources pour votre avenir professionnel</h1>
+      <p>
+        Principalement des outils pour vous aider dans vos démarches de recherche de stage et d'orientation.
+        N'oubliez pas le <strong style="color:#88c6d6;">kiosque Onisep du CDI</strong> qui regorge de documents !
+        N'oubliez pas également la présence du <strong style="color:#88c6d6;">Conseiller Principal d'Éducation</strong>
+        dans l'établissement.
+      </p>
+      <a href="./Orientation.html" class="btn">Voir la page Orientation</a>
+    </div>
 
-      <div class="footer-col">
-        <h4>CDI - Lycée</h4>
+    <div class="page-contenu">
+
+      <!-- Presse en ligne -->
+      <div class="article-bloc">
+        <h2>📰 Tous les jours, la presse en ligne</h2>
+        <span class="article-date">05/11/2020</span>
+        <img src="../Images/journaux.jpg" alt="journaux" />
+        <p>
+          Accédez gratuitement à plusieurs journaux et magazines en ligne via le portail ePresse.fr mis à disposition
+          par le CDI du lycée. Vous y trouverez des titres tels que <em>Le Monde, L'Équipe, Les Échos, Paris Match</em>,
+          et bien
+          d'autres encore. Pour y accéder, connectez-vous au réseau du lycée et rendez-vous sur le site ePresse.fr.
+          Bonne lecture !
+        </p>
+        <a href="https://lirelactu.fr/" target="_blank" rel="noopener" class="btn">Accéder à lirelactu.fr</a>
       </div>
 
-      <div class="footer-col">
-        <h4>Coordonnées</h4>
-        <p>LYCÉE PROFESSIONNEL LAVOISIER</p>
-        <p>8 RUE JULES FERRY</p>
-        <p>60110 MERU</p>
-      </div>
+      <!-- Sites d'orientation -->
+      <h2 class="section-titre">Des sites pour vous aider dans votre orientation</h2>
 
-      <div class="footer-col">
-        <h4>Informations</h4>
-        <ul>
-          <li ><a href="#">Mentions légales</a></li>
-          <li><a href="#">Mentions RGPD</a></li>
-        </ul>
-      </div>
+      <div class="sites-liste">
 
-      <div class="footer-col">
-        <h4>Suivez-nous</h4>
-        <div class="resaux-social">
-          <a href="https://www.facebook.com/profile.php?id=100086643024970&locale=fr_FR"><img src="/Images/ressaux/facebook.png" alt="Facebook"></a>
-          <a href="https://www.youtube.com/channel/UCAHjFYvFlPExoVpSqldZX5A"><img src="/Images/ressaux/youtube.png" alt="Youtube"></i></a>
-          <a href="https://www.instagram.com/lyceedesmetiers_lavoisier_meru/?g=5"><img src="/Images/ressaux/instagram.png" alt="Instagram"></a>
-          <a href="https://www.linkedin.com/company/lyc%C3%A9e-des-m%C3%A9tiers-des-services-antoine-lavoisier/posts/?feedView=all&viewAsMember=true"><img src="/Images/ressaux/linkedin.png" alt="Linkedin"></i></a>
+        <div class="site-carte">
+          <h3>✨ Imagine ton futur</h3>
+          <p>Ce site fournit des informations sur les études après la 3ème (voie générale et technologique ou voie
+            professionnelle)
+            et sur les stages (conseils pratiques et témoignages de stagiaires).</p>
+          <a href="https://www.imaginetonfutur.com/" target="_blank" rel="noopener">Plus d'information →</a>
         </div>
+
+        <div class="site-carte">
+          <h3>ONISEP</h3>
+          <p>L'ONISEP fournit des informations sur les filières et formations (de la 3ème à bac+8, plus l'alternance),
+            sur les établissements (par nom, type ou zone géographique), sur les études à l'étranger...</p>
+          <a href="https://www.onisep.fr/" target="_blank" rel="noopener">Plus d'information →</a>
+        </div>
+
+        <div class="site-carte">
+          <h3>Planète métiers Picardie</h3>
+          <p>Une mine d'information concernant les études et les formations en Picardie.</p>
+          <a href="https://www.onisep.fr/Mes-infos-regionales/Hauts-de-France" target="_blank" rel="noopener">Plus
+            d'information →</a>
+        </div>
+
+      </div>
+
+      <!-- Guides Onisep -->
+      <h2 class="section-titre">Un échantillon de guides Onisep à venir feuilleter au CDI</h2>
+
+      <div class="guides-grille">
+
+        <div class="guide-carte">
+          <span class="guide-emoji">🏥</span>
+          <p>Zoom Métiers : Les entreprises du dispositif médical</p>
+        </div>
+
+        <div class="guide-carte">
+          <span class="guide-emoji">🛒</span>
+          <p>Zoom Métiers : Commerce alimentaire de proximité</p>
+        </div>
+
+        <div class="guide-carte">
+          <span class="guide-emoji">🚗</span>
+          <p>Les métiers de l'automobile</p>
+        </div>
+
+        <div class="guide-carte">
+          <span class="guide-emoji">📋</span>
+          <p>Guide pratique</p>
+        </div>
+
+        <div class="guide-carte">
+          <span class="guide-emoji">🌾</span>
+          <p>Les métiers de l'agriculture</p>
+        </div>
+
+        <div class="guide-carte">
+          <span class="guide-emoji">📚</span>
+          <p>Et bien d'autres au kiosque Onisep du CDI !</p>
+        </div>
+
+      </div>
+
+      <div class="note-info">
+        Venez feuilleter ces guides et bien d'autres directement au <strong>CDI</strong> — le kiosque Onisep est à votre
+        disposition !
+      </div>
+
+      <!-- CTA vers page orientation -->
+      <div class="cta-orientation">
+        <div>
+          <h2>Besoin d'aide pour votre orientation ?</h2>
+          <p>Découvrez toutes les personnes ressources qui peuvent vous guider, ainsi qu'une sitothèque de sites classés
+            par secteur métier.</p>
+        </div>
+        <a href="./Orientation.html" class="btn-lien">Voir la page Orientation →</a>
       </div>
 
     </div>
+  </main>
 
-    <p style="text-align:center; margin-top:30px;">2025 © Tous droits réservés.</p>
-  </div>
-</footer>
+  <footer class="footer">
+    <div class="container">
+      <div class="row">
+        <div class="footer-col">
+          <h4>CDI - Lycée</h4>
+        </div>
+        <div class="footer-col">
+          <h4>Coordonnées</h4>
+          <p>LYCÉE PROFESSIONNEL LAVOISIER</p>
+          <p>8 RUE JULES FERRY</p>
+          <p>60110 MERU</p>
+        </div>
+        <div class="footer-col">
+          <h4>Informations</h4>
+          <ul>
+            <li><a href="./Mentions légales.html">Mentions légales</a></li>
+            <li><a href="./Mentions RGPD.html">Mentions RGPD</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h4>Suivez-nous</h4>
+          <div class="resaux-social">
+            <a href="https://www.facebook.com/profile.php?id=100086643024970&locale=fr_FR"><img
+                src="../Images/ressaux/facebook.png" alt="Facebook"></a>
+            <a href="https://www.youtube.com/channel/UCAHjFYvFlPExoVpSqldZX5A"><img src="../Images/ressaux/youtube.png"
+                alt="Youtube"></a>
+            <a href="https://www.instagram.com/lyceedesmetiers_lavoisier_meru/?g=5"><img
+                src="../Images/ressaux/instagram.png" alt="Instagram"></a>
+            <a
+              href="https://www.linkedin.com/company/lyc%C3%A9e-des-m%C3%A9tiers-des-services-antoine-lavoisier/posts/?feedView=all&viewAsMember=true"><img
+                src="../Images/ressaux/linkedin.png" alt="Linkedin"></a>
+          </div>
+        </div>
+      </div>
+      <p style="text-align:center; margin-top:30px;">2026 © Tous droits réservés.</p>
+    </div>
+  </footer>
+
+</body>
+
+</html>
