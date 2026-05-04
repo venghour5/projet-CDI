@@ -124,7 +124,7 @@ void loop() {
   // Mode police (2 sections)
   else if(police == true){
     for(int i = 0; i < LEDS_TOTAL; i++){
-      if(i<30){
+      if(i<LEDS_TOTAL/2){
         if(police_etape) leds[i] = CRGB(255, 0, 0);
         else leds[i] = CRGB(0, 0, 255);
       }
