@@ -4,12 +4,12 @@
 
 // Variables à modifier manuellement
 #define LED_PIN 23
-#define LEDS_TOTAL 108 // Nombre total de leds
+#define LEDS_TOTAL 156 // Nombre total de leds
 const char* ssid = "TP-Link_AP_1D6A";
 const char* password = "31901642";
 
 // Par défaut, changera plus tard
-int num_leds = 500; // Valeur pour chaque section, défaut 500 (largement l'entièreté des leds)
+int num_leds = LEDS_TOTAL; // Valeur pour chaque section, entièreté de la bande par défaut
 int num_sections = 1; // Une par défaut (toute la bande)
 int vitesse = 1; // Pour le mode arc en ciel
 int luminosite = 255;
