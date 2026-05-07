@@ -317,6 +317,27 @@ body {
   color: #000;
 }
 
+.account-action {
+  text-align: center;
+  font-size: 14px;
+  color: #111;
+}
+
+.account-action a {
+  color: #000;
+  font-weight: 700;
+}
+
+.form-feedback {
+  text-align: center;
+  font-size: 14px;
+}
+
+.form-feedback.success {
+  color: #0c7a2a;
+  font-weight: 700;
+}
+
 /* =========================
    STRUCTURE COMMUNE CDI + ESP
 ========================= */
@@ -719,9 +740,9 @@ body.dashboard-body {
 .esp-resource-table {
   width: 100%;
   border-collapse: collapse;
-  background: #f8f8f8;
-  border-radius: 10px;
-  overflow: hidden;
+  background: #ffffff;
+  border: 1px solid #b9b9b9;
+  table-layout: fixed;
 }
 
 .esp-resource-table th,
@@ -729,17 +750,15 @@ body.dashboard-body {
   padding: 10px 12px;
   text-align: left;
   font-size: 15px;
-  border-bottom: 1px solid #d7d7d7;
+  border: 1px solid #d1d1d1;
+  width: 33.333%;
+  word-break: break-word;
 }
 
 .esp-resource-table thead th {
-  background: #e2e2e2;
+  background: #efefef;
   font-weight: 700;
   white-space: nowrap;
-}
-
-.esp-resource-table tbody tr:last-child td {
-  border-bottom: none;
 }
 
 .esp-line-empty {

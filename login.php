@@ -53,6 +53,8 @@ $error = $_GET['error'] ?? '';
 
             <?php if ($error === 'invalid'): ?>
                 <p style="color:red; text-align:center;">Identifiants incorrects.</p>
+            <?php elseif ($error === 'db'): ?>
+                <p style="color:red; text-align:center;">Erreur de base de donnees. Merci de vous reconnecter.</p>
             <?php endif; ?>
 
             <div class="input-group">
@@ -66,6 +68,7 @@ $error = $_GET['error'] ?? '';
             </div>
 
             <button type="submit" class="btn-submit">Connexion</button>
+            <p class="account-action">Pas encore de compte ? <a href="register.php">Créer un compte</a></p>
         </form>
     </main>
 

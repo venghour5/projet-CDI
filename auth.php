@@ -16,17 +16,16 @@ $stmt->execute(['login' => $username]);
 $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if ($user) {
-    $ok = false;
-
     if (password_verify($password, $user['password'])) {
-        $ok = true;
-    }
+        if (password_needs_rehash($user['password'], PASSWORD_DEFAULT)) {
+            $newHash = password_hash($password, PASSWORD_DEFAULT);
+            $rehashStmt = $pdo->prepare("UPDATE utilisateur SET password = :password WHERE id_user = :id_user");
+            $rehashStmt->execute([
+                'password' => $newHash,
+                'id_user' => (int)$user['id_user']
+            ]);
+        }
 
-    if ($password === $user['password']) {
-        $ok = true;
-    }
-
-    if ($ok) {
         $role = isset($user['role']) ? (int)$user['role'] : -1;
         if ($role !== 0 && $role !== 1) {
             header("Location: login.php?error=invalid");

@@ -12,6 +12,36 @@ if ((int)($_SESSION['role'] ?? -1) !== 1) {
     exit();
 }
 
+function redirectToLoginForDbIssue(): void
+{
+    session_unset();
+    session_destroy();
+    header("Location: login.php?error=db");
+    exit();
+}
+
+function detectResourcesTable(PDO $pdo): string
+{
+    $candidates = ['ressources', 'ressources(livre)'];
+    $stmt = $pdo->query("SHOW TABLES");
+    $tables = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+    foreach ($candidates as $candidate) {
+        if (in_array($candidate, $tables, true)) {
+            return $candidate;
+        }
+    }
+
+    throw new PDOException("Table des ressources introuvable.");
+}
+
+$resourcesTableName = '';
+try {
+    $resourcesTableName = detectResourcesTable($pdo);
+} catch (PDOException $e) {
+    redirectToLoginForDbIssue();
+}
+
 $zoneCreateError = '';
 $showModal = false;
 
@@ -68,7 +98,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($zoneId > 0 && $resourceId > 0 && $newTitle !== '') {
             try {
-                $stmt = $pdo->prepare("UPDATE ressources SET titre = ? WHERE id_ressources = ? AND id_zone = ?");
+                $stmt = $pdo->prepare("UPDATE `{$resourcesTableName}` SET titre = ? WHERE id_ressources = ? AND id_zone = ?");
                 $stmt->execute([$newTitle, $resourceId, $zoneId]);
 
                 header("Location: cdi.php?zone=$zoneId&success=resource_updated");
@@ -88,7 +118,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             try {
                 $pdo->beginTransaction();
 
-                $stmt = $pdo->prepare("UPDATE ressources SET id_zone = NULL WHERE id_zone = ?");
+                $stmt = $pdo->prepare("UPDATE `{$resourcesTableName}` SET id_zone = NULL WHERE id_zone = ?");
                 $stmt->execute([$zoneId]);
 
                 $stmt = $pdo->prepare("UPDATE zones SET id_zone = NULL WHERE id_zone = ?");
@@ -123,78 +153,78 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $currentZoneId = isset($_GET['zone']) ? (int)$_GET['zone'] : 0;
-$zones = $pdo->query("
-    SELECT g.*, COUNT(z.id_module) AS modules_count
-    FROM genres g
-    LEFT JOIN zones z ON z.id_zone = g.id_zone
-    GROUP BY g.id_zone, g.nom_zone, g.description
-    ORDER BY g.nom_zone ASC
-")->fetchAll(PDO::FETCH_ASSOC);
-
-if ($currentZoneId === 0 && !empty($zones)) {
-    $currentZoneId = (int)$zones[0]['id_zone'];
-}
-
-$stmt = $pdo->prepare(
-    "SELECT g.*, z.ip_address, z.statut, z.dernier_signal, z.etat_batterie
-    FROM genres g
-    LEFT JOIN zones z ON g.id_zone = z.id_zone
-    WHERE g.id_zone = ?"
-);
-$stmt->execute([$currentZoneId]);
-$zoneInfo = $stmt->fetch(PDO::FETCH_ASSOC);
-$hasCurrentZone = !empty($zoneInfo) && isset($zoneInfo['id_zone']);
-
-$stmtZoneModules = $pdo->prepare("SELECT id_module, ip_address FROM zones WHERE id_zone = ? ORDER BY id_module ASC");
-$stmtZoneModules->execute([$currentZoneId]);
-$zoneModules = $stmtZoneModules->fetchAll(PDO::FETCH_ASSOC);
-
+$zones = [];
+$zoneInfo = [];
+$hasCurrentZone = false;
+$zoneModules = [];
 $zoneModuleRows = [];
 $zoneModuleIds = [];
-foreach ($zoneModules as $module) {
-    $moduleId = trim((string)($module['id_module'] ?? ''));
-    $ipAddress = trim((string)($module['ip_address'] ?? ''));
-
-    if ($moduleId !== '') {
-        $zoneModuleRows[] = [
-            'id_module' => $moduleId,
-            'label' => 'ESP ' . ($ipAddress !== '' ? $ipAddress : $moduleId),
-        ];
-        $zoneModuleIds[] = $moduleId;
-    }
-}
-
 $resourcesByModule = [];
-if (!empty($zoneModuleIds)) {
-    $modulePlaceholders = implode(',', array_fill(0, count($zoneModuleIds), '?'));
-    $stmtResByModule = $pdo->prepare("SELECT id_module, titre, auteur, cote, type, disponible FROM ressources WHERE id_module IN ($modulePlaceholders) ORDER BY id_module ASC, titre ASC");
-    $stmtResByModule->execute($zoneModuleIds);
-    $moduleResourcesRows = $stmtResByModule->fetchAll(PDO::FETCH_ASSOC);
 
-    foreach ($moduleResourcesRows as $moduleResource) {
-        $moduleKey = trim((string)($moduleResource['id_module'] ?? ''));
-        if ($moduleKey === '') {
-            continue;
-        }
+try {
+    $zones = $pdo->query("
+        SELECT g.*, COUNT(z.id_module) AS modules_count
+        FROM genres g
+        LEFT JOIN zones z ON z.id_zone = g.id_zone
+        GROUP BY g.id_zone, g.nom_zone, g.description
+        ORDER BY g.nom_zone ASC
+    ")->fetchAll(PDO::FETCH_ASSOC);
 
-        if (!isset($resourcesByModule[$moduleKey])) {
-            $resourcesByModule[$moduleKey] = [];
-        }
-
-        $title = trim((string)($moduleResource['titre'] ?? ''));
-        $author = trim((string)($moduleResource['auteur'] ?? ''));
-        $cote = trim((string)($moduleResource['cote'] ?? ''));
-        $type = trim((string)($moduleResource['type'] ?? ''));
-        $isAvailable = isset($moduleResource['disponible']) ? (int)$moduleResource['disponible'] : null;
-
-        $resourcesByModule[$moduleKey][] = [
-            'titre' => $title !== '' ? $title : '--',
-            'auteur' => $author !== '' ? $author : '--',
-            'cote' => $cote !== '' ? $cote : '--',
-            'type' => $type !== '' ? $type : '--',
-            'disponible' => $isAvailable === null ? '--' : ($isAvailable === 1 ? 'Oui' : 'Non'),
-        ];
+    if ($currentZoneId === 0 && !empty($zones)) {
+        $currentZoneId = (int)$zones[0]['id_zone'];
     }
+
+    $stmt = $pdo->prepare(
+        "SELECT g.*, z.ip_address, z.statut, z.dernier_signal, z.etat_batterie
+        FROM genres g
+        LEFT JOIN zones z ON g.id_zone = z.id_zone
+        WHERE g.id_zone = ?"
+    );
+    $stmt->execute([$currentZoneId]);
+    $zoneInfo = $stmt->fetch(PDO::FETCH_ASSOC);
+    $hasCurrentZone = !empty($zoneInfo) && isset($zoneInfo['id_zone']);
+
+    $stmtZoneModules = $pdo->prepare("SELECT id_module, ip_address FROM zones WHERE id_zone = ? ORDER BY id_module ASC");
+    $stmtZoneModules->execute([$currentZoneId]);
+    $zoneModules = $stmtZoneModules->fetchAll(PDO::FETCH_ASSOC);
+
+    foreach ($zoneModules as $module) {
+        $moduleId = trim((string)($module['id_module'] ?? ''));
+        $ipAddress = trim((string)($module['ip_address'] ?? ''));
+
+        if ($moduleId !== '') {
+            $zoneModuleRows[] = [
+                'id_module' => $moduleId,
+                'label' => 'ESP ' . ($ipAddress !== '' ? $ipAddress : $moduleId),
+            ];
+            $zoneModuleIds[] = $moduleId;
+        }
+    }
+
+    if (!empty($zoneModuleIds)) {
+        $modulePlaceholders = implode(',', array_fill(0, count($zoneModuleIds), '?'));
+        $stmtResByModule = $pdo->prepare("SELECT id_module, titre FROM `{$resourcesTableName}` WHERE id_module IN ($modulePlaceholders) ORDER BY id_module ASC, titre ASC");
+        $stmtResByModule->execute($zoneModuleIds);
+        $moduleResourcesRows = $stmtResByModule->fetchAll(PDO::FETCH_ASSOC);
+
+        foreach ($moduleResourcesRows as $moduleResource) {
+            $moduleKey = trim((string)($moduleResource['id_module'] ?? ''));
+            if ($moduleKey === '') {
+                continue;
+            }
+
+            if (!isset($resourcesByModule[$moduleKey])) {
+                $resourcesByModule[$moduleKey] = [];
+            }
+
+            $title = trim((string)($moduleResource['titre'] ?? ''));
+            $resourcesByModule[$moduleKey][] = [
+                'titre' => $title !== '' ? $title : '--',
+            ];
+        }
+    }
+} catch (PDOException $e) {
+    redirectToLoginForDbIssue();
 }
 
 $feedbackMessage = '';
@@ -326,6 +356,7 @@ if ($feedbackMessage === '' && isset($_GET['error'])) {
                         <div class="esp-associated-list">
                             <?php foreach ($zoneModuleRows as $moduleRow):
                                 $moduleResourceList = $resourcesByModule[$moduleRow['id_module']] ?? [];
+                                $titleColumns = 3;
                             ?>
                                 <div class="esp-group">
                                     <div class="esp-module-name"><?php echo htmlspecialchars($moduleRow['label']); ?></div>
@@ -333,27 +364,28 @@ if ($feedbackMessage === '' && isset($_GET['error'])) {
                                         <table class="esp-resource-table">
                                             <thead>
                                                 <tr>
-                                                    <th>Titre</th>
-                                                    <th>Auteur</th>
-                                                    <th>Cote</th>
-                                                    <th>Type</th>
-                                                    <th>Disponible</th>
+                                                    <th colspan="<?php echo $titleColumns; ?>">Titre</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
                                         <?php if (!empty($moduleResourceList)): ?>
-                                            <?php foreach ($moduleResourceList as $resourceItem): ?>
+                                            <?php
+                                                $titles = array_map(
+                                                    static fn(array $resourceItem): string => (string)($resourceItem['titre'] ?? '--'),
+                                                    $moduleResourceList
+                                                );
+                                                $titleRows = array_chunk($titles, $titleColumns);
+                                            ?>
+                                            <?php foreach ($titleRows as $titleRow): ?>
                                                 <tr>
-                                                    <td><?php echo htmlspecialchars($resourceItem['titre']); ?></td>
-                                                    <td><?php echo htmlspecialchars($resourceItem['auteur']); ?></td>
-                                                    <td><?php echo htmlspecialchars($resourceItem['cote']); ?></td>
-                                                    <td><?php echo htmlspecialchars($resourceItem['type']); ?></td>
-                                                    <td><?php echo htmlspecialchars($resourceItem['disponible']); ?></td>
+                                                    <?php for ($col = 0; $col < $titleColumns; $col++): ?>
+                                                        <td><?php echo htmlspecialchars($titleRow[$col] ?? ''); ?></td>
+                                                    <?php endfor; ?>
                                                 </tr>
                                             <?php endforeach; ?>
                                         <?php else: ?>
                                                 <tr>
-                                                    <td colspan="5" class="esp-line-empty">Aucune ressource liee</td>
+                                                    <td colspan="<?php echo $titleColumns; ?>" class="esp-line-empty">Aucune ressource liee</td>
                                                 </tr>
                                         <?php endif; ?>
                                             </tbody>

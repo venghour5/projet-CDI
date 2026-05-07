@@ -20,6 +20,7 @@
 
         <ul class="nav-links">
             <li><a href="index.php" class="active">Accueil</a></li>
+            <li><a href="register.php">Créer un compte</a></li>
         </ul>
     </nav>
 </header>
@@ -31,4 +32,3 @@
 
 </body>
 </html>
-
