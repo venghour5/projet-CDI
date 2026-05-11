@@ -72,6 +72,8 @@ void luminositeLED() {
   int nouvelle_luminosite = server.arg("l").toInt();
   luminosite = nouvelle_luminosite;
   FastLED.setBrightness(luminosite);
+  
+  server.send(200, "text/plain", "Luminosité changée");
 }
 
 void setup() {
