@@ -20,28 +20,6 @@ function redirectToLoginForDbIssue(): void
     exit();
 }
 
-function detectResourcesTable(PDO $pdo): string
-{
-    $candidates = ['ressources', 'ressources(livre)'];
-    $stmt = $pdo->query("SHOW TABLES");
-    $tables = $stmt->fetchAll(PDO::FETCH_COLUMN);
-
-    foreach ($candidates as $candidate) {
-        if (in_array($candidate, $tables, true)) {
-            return $candidate;
-        }
-    }
-
-    throw new PDOException("Table des ressources introuvable.");
-}
-
-$resourcesTableName = '';
-try {
-    $resourcesTableName = detectResourcesTable($pdo);
-} catch (PDOException $e) {
-    redirectToLoginForDbIssue();
-}
-
 $zoneCreateError = '';
 $showModal = false;
 
@@ -57,12 +35,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $showModal = true;
         } else {
             try {
-                $nextZoneId = (int)$pdo->query("SELECT COALESCE(MAX(id_zone), 0) + 1 FROM genres")->fetchColumn();
+                $nextZoneId = (int)$pdo->query("SELECT COALESCE(MAX(id), 0) + 1 FROM genre")->fetchColumn();
                 if ($nextZoneId <= 0) {
                     $nextZoneId = 1;
                 }
 
-                $stmt = $pdo->prepare("INSERT INTO genres (id_zone, nom_zone, description) VALUES (?, ?, ?)");
+                $stmt = $pdo->prepare("INSERT INTO genre (id, nom, description) VALUES (?, ?, ?)");
                 $stmt->execute([$nextZoneId, $nom_zone, $description]);
 
                 header("Location: cdi.php?zone=$nextZoneId&success=zone_added");
@@ -78,7 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($zoneId > 0 && $newZoneName !== '') {
             try {
-                $stmt = $pdo->prepare("UPDATE genres SET nom_zone = ? WHERE id_zone = ?");
+                $stmt = $pdo->prepare("UPDATE genre SET nom = ? WHERE id = ?");
                 $stmt->execute([$newZoneName, $zoneId]);
 
                 header("Location: cdi.php?zone=$zoneId&success=zone_updated");
@@ -98,7 +76,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($zoneId > 0 && $resourceId > 0 && $newTitle !== '') {
             try {
-                $stmt = $pdo->prepare("UPDATE `{$resourcesTableName}` SET titre = ? WHERE id_ressources = ? AND id_zone = ?");
+                $stmt = $pdo->prepare("
+                    UPDATE livre l
+                    INNER JOIN bloc b ON b.id = l.id_bloc
+                    SET l.titre = ?
+                    WHERE l.id = ? AND b.genre = ?
+                ");
                 $stmt->execute([$newTitle, $resourceId, $zoneId]);
 
                 header("Location: cdi.php?zone=$zoneId&success=resource_updated");
@@ -118,18 +101,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             try {
                 $pdo->beginTransaction();
 
-                $stmt = $pdo->prepare("UPDATE `{$resourcesTableName}` SET id_zone = NULL WHERE id_zone = ?");
+                $stmt = $pdo->prepare("UPDATE bloc SET genre = NULL WHERE genre = ?");
                 $stmt->execute([$zoneId]);
 
-                $stmt = $pdo->prepare("UPDATE zones SET id_zone = NULL WHERE id_zone = ?");
-                $stmt->execute([$zoneId]);
-
-                $stmt = $pdo->prepare("DELETE FROM genres WHERE id_zone = ?");
+                $stmt = $pdo->prepare("DELETE FROM genre WHERE id = ?");
                 $stmt->execute([$zoneId]);
 
                 $pdo->commit();
 
-                $nextZoneId = $pdo->query("SELECT id_zone FROM genres ORDER BY nom_zone ASC LIMIT 1")->fetchColumn();
+                $nextZoneId = $pdo->query("SELECT id FROM genre ORDER BY nom ASC LIMIT 1")->fetchColumn();
                 $location = "cdi.php?success=zone_deleted";
                 if ($nextZoneId !== false) {
                     $location .= "&zone=" . (int)$nextZoneId;
@@ -163,11 +143,15 @@ $resourcesByModule = [];
 
 try {
     $zones = $pdo->query("
-        SELECT g.*, COUNT(z.id_module) AS modules_count
-        FROM genres g
-        LEFT JOIN zones z ON z.id_zone = g.id_zone
-        GROUP BY g.id_zone, g.nom_zone, g.description
-        ORDER BY g.nom_zone ASC
+        SELECT
+            g.id AS id_zone,
+            g.nom AS nom_zone,
+            g.description,
+            COUNT(DISTINCT b.id_zone) AS modules_count
+        FROM genre g
+        LEFT JOIN bloc b ON b.genre = g.id
+        GROUP BY g.id, g.nom, g.description
+        ORDER BY g.nom ASC
     ")->fetchAll(PDO::FETCH_ASSOC);
 
     if ($currentZoneId === 0 && !empty($zones)) {
@@ -175,16 +159,24 @@ try {
     }
 
     $stmt = $pdo->prepare(
-        "SELECT g.*, z.ip_address, z.statut, z.dernier_signal, z.etat_batterie
-        FROM genres g
-        LEFT JOIN zones z ON g.id_zone = z.id_zone
-        WHERE g.id_zone = ?"
+        "SELECT
+            g.id AS id_zone,
+            g.nom AS nom_zone,
+            g.description
+        FROM genre g
+        WHERE g.id = ?"
     );
     $stmt->execute([$currentZoneId]);
     $zoneInfo = $stmt->fetch(PDO::FETCH_ASSOC);
     $hasCurrentZone = !empty($zoneInfo) && isset($zoneInfo['id_zone']);
 
-    $stmtZoneModules = $pdo->prepare("SELECT id_module, ip_address FROM zones WHERE id_zone = ? ORDER BY id_module ASC");
+    $stmtZoneModules = $pdo->prepare("
+        SELECT z.id AS id_module, z.ip_address
+        FROM zone z
+        INNER JOIN bloc b ON b.id_zone = z.id
+        WHERE b.genre = ?
+        ORDER BY z.id ASC
+    ");
     $stmtZoneModules->execute([$currentZoneId]);
     $zoneModules = $stmtZoneModules->fetchAll(PDO::FETCH_ASSOC);
 
@@ -203,8 +195,17 @@ try {
 
     if (!empty($zoneModuleIds)) {
         $modulePlaceholders = implode(',', array_fill(0, count($zoneModuleIds), '?'));
-        $stmtResByModule = $pdo->prepare("SELECT id_module, titre FROM `{$resourcesTableName}` WHERE id_module IN ($modulePlaceholders) ORDER BY id_module ASC, titre ASC");
-        $stmtResByModule->execute($zoneModuleIds);
+        $stmtResByModule = $pdo->prepare("
+            SELECT z.id AS id_module, l.id, l.titre
+            FROM livre l
+            INNER JOIN bloc b ON b.id = l.id_bloc
+            INNER JOIN zone z ON z.id = b.id_zone
+            WHERE z.id IN ($modulePlaceholders) AND b.genre = ?
+            ORDER BY z.id ASC, l.titre ASC
+        ");
+        $executeParams = $zoneModuleIds;
+        $executeParams[] = (string)$currentZoneId;
+        $stmtResByModule->execute($executeParams);
         $moduleResourcesRows = $stmtResByModule->fetchAll(PDO::FETCH_ASSOC);
 
         foreach ($moduleResourcesRows as $moduleResource) {

@@ -10,7 +10,7 @@ if ($username === '' || $password === '') {
     exit();
 }
 
-$sql = "SELECT id_user, login, password, role FROM utilisateur WHERE login = :login LIMIT 1";
+$sql = "SELECT id, nom, password, role FROM utilisateur WHERE nom = :login LIMIT 1";
 $stmt = $pdo->prepare($sql);
 $stmt->execute(['login' => $username]);
 $user = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -19,10 +19,10 @@ if ($user) {
     if (password_verify($password, $user['password'])) {
         if (password_needs_rehash($user['password'], PASSWORD_DEFAULT)) {
             $newHash = password_hash($password, PASSWORD_DEFAULT);
-            $rehashStmt = $pdo->prepare("UPDATE utilisateur SET password = :password WHERE id_user = :id_user");
+            $rehashStmt = $pdo->prepare("UPDATE utilisateur SET password = :password WHERE id = :id_user");
             $rehashStmt->execute([
                 'password' => $newHash,
-                'id_user' => (int)$user['id_user']
+                'id_user' => (int)$user['id']
             ]);
         }
 
@@ -32,8 +32,8 @@ if ($user) {
             exit();
         }
 
-        $_SESSION['id_user'] = $user['id_user'];
-        $_SESSION['login'] = $user['login'];
+        $_SESSION['id_user'] = $user['id'];
+        $_SESSION['login'] = $user['nom'];
         $_SESSION['role'] = $role;
 
         if ($role === 1) {

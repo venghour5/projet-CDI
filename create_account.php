@@ -21,7 +21,7 @@ if ($password !== $passwordConfirm) {
 }
 
 try {
-    $check = $pdo->prepare("SELECT id_user FROM utilisateur WHERE login = :login LIMIT 1");
+    $check = $pdo->prepare("SELECT id FROM utilisateur WHERE nom = :login LIMIT 1");
     $check->execute(['login' => $username]);
     if ($check->fetch(PDO::FETCH_ASSOC)) {
         header("Location: register.php?error=exists");
@@ -29,7 +29,7 @@ try {
     }
 
     $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
-    $insert = $pdo->prepare("INSERT INTO utilisateur (login, password, role) VALUES (:login, :password, :role)");
+    $insert = $pdo->prepare("INSERT INTO utilisateur (nom, password, role) VALUES (:login, :password, :role)");
     $insert->execute([
         'login' => $username,
         'password' => $hashedPassword,

@@ -12,33 +12,10 @@ if ((int)($_SESSION['role'] ?? -1) !== 1) {
     exit();
 }
 
-function generateModuleId(PDO $pdo, string $ipAddress): string
+function generateModuleId(PDO $pdo): int
 {
-    $slug = strtolower((string)preg_replace('/[^a-zA-Z0-9]+/', '_', $ipAddress));
-    $slug = trim($slug, '_');
-    if ($slug === '') {
-        $slug = 'module';
-    }
-
-    $base = 'esp_' . $slug;
-    $candidate = $base;
-    $index = 1;
-
-    $existsStmt = $pdo->prepare("SELECT 1 FROM zones WHERE id_module = ? LIMIT 1");
-
-    while (true) {
-        $existsStmt->execute([$candidate]);
-        if (!$existsStmt->fetchColumn()) {
-            return $candidate;
-        }
-
-        $candidate = $base . '_' . $index;
-        $index++;
-
-        if ($index > 9999) {
-            return 'esp_' . uniqid();
-        }
-    }
+    $nextId = (int)$pdo->query("SELECT COALESCE(MAX(id), 0) + 1 FROM zone")->fetchColumn();
+    return $nextId > 0 ? $nextId : 1;
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -53,8 +30,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         try {
-            $newModuleId = generateModuleId($pdo, $ipAddress);
-            $stmt = $pdo->prepare("INSERT INTO zones (id_module, id_zone, ip_address, etat_batterie, dernier_signal, statut) VALUES (?, NULL, ?, 100, NOW(), 'online')");
+            $newModuleId = generateModuleId($pdo);
+            $stmt = $pdo->prepare("INSERT INTO zone (id, ip_address, etat_batterie, dernier_signal, nombre_section) VALUES (?, ?, 100, NOW(), 1)");
             $stmt->execute([$newModuleId, $ipAddress]);
 
             header("Location: esp.php?success=module_added");
@@ -66,24 +43,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if ($action === 'assign_module_zone') {
-        $moduleId = trim($_POST['module_id'] ?? '');
+        $moduleId = (int)($_POST['module_id'] ?? 0);
         $zoneId = (int)($_POST['zone_id'] ?? 0);
 
-        if ($moduleId === '' || $zoneId <= 0) {
+        if ($moduleId <= 0 || $zoneId <= 0) {
             header("Location: esp.php?error=assign");
             exit();
         }
 
         try {
-            $zoneExistsStmt = $pdo->prepare("SELECT 1 FROM genres WHERE id_zone = ? LIMIT 1");
+            $zoneExistsStmt = $pdo->prepare("SELECT 1 FROM genre WHERE id = ? LIMIT 1");
             $zoneExistsStmt->execute([$zoneId]);
             if (!$zoneExistsStmt->fetchColumn()) {
                 header("Location: esp.php?error=assign");
                 exit();
             }
 
-            $stmt = $pdo->prepare("UPDATE zones SET id_zone = ? WHERE id_module = ?");
-            $stmt->execute([$zoneId, $moduleId]);
+            $moduleExistsStmt = $pdo->prepare("SELECT 1 FROM zone WHERE id = ? LIMIT 1");
+            $moduleExistsStmt->execute([$moduleId]);
+            if (!$moduleExistsStmt->fetchColumn()) {
+                header("Location: esp.php?error=assign");
+                exit();
+            }
+
+            $existingBlocStmt = $pdo->prepare("SELECT id FROM bloc WHERE id_zone = ? LIMIT 1");
+            $existingBlocStmt->execute([$moduleId]);
+            $existingBlocId = $existingBlocStmt->fetchColumn();
+
+            if ($existingBlocId !== false) {
+                $stmt = $pdo->prepare("UPDATE bloc SET genre = ? WHERE id = ?");
+                $stmt->execute([$zoneId, (int)$existingBlocId]);
+            } else {
+                $stmt = $pdo->prepare("INSERT INTO bloc (id_zone, section, alphabet_start, alphabet_end, genre) VALUES (?, 1, 'A', 'Z', ?)");
+                $stmt->execute([$moduleId, $zoneId]);
+            }
 
             header("Location: esp.php?success=module_assigned");
             exit();
@@ -94,15 +87,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if ($action === 'disconnect_module') {
-        $moduleId = trim($_POST['module_id'] ?? '');
+        $moduleId = (int)($_POST['module_id'] ?? 0);
 
-        if ($moduleId === '') {
+        if ($moduleId <= 0) {
             header("Location: esp.php?error=disconnect");
             exit();
         }
 
         try {
-            $stmt = $pdo->prepare("UPDATE zones SET id_zone = NULL WHERE id_module = ?");
+            $stmt = $pdo->prepare("UPDATE bloc SET genre = NULL WHERE id_zone = ?");
             $stmt->execute([$moduleId]);
 
             header("Location: esp.php?success=module_disconnected");
@@ -115,14 +108,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $sqlModules = "
-    SELECT m.id_module, m.ip_address, m.etat_batterie, m.dernier_signal, m.statut, m.id_zone, g.nom_zone
-    FROM zones m
-    LEFT JOIN genres g ON g.id_zone = m.id_zone
-    ORDER BY g.nom_zone ASC, m.id_module ASC
+    SELECT
+        z.id AS id_module,
+        z.ip_address,
+        z.etat_batterie,
+        z.dernier_signal,
+        CASE WHEN b.genre IS NULL THEN 'offline' ELSE 'online' END AS statut,
+        b.genre AS id_zone,
+        g.nom AS nom_zone
+    FROM zone z
+    LEFT JOIN bloc b ON b.id_zone = z.id
+    LEFT JOIN genre g ON g.id = b.genre
+    ORDER BY g.nom ASC, z.id ASC
 ";
 $modules = $pdo->query($sqlModules)->fetchAll(PDO::FETCH_ASSOC);
 
-$zones = $pdo->query("SELECT id_zone, nom_zone FROM genres ORDER BY nom_zone ASC")->fetchAll(PDO::FETCH_ASSOC);
+$zones = $pdo->query("SELECT id AS id_zone, nom AS nom_zone FROM genre ORDER BY nom ASC")->fetchAll(PDO::FETCH_ASSOC);
 
 $feedbackMessage = '';
 $feedbackBg = '#89ff57';
