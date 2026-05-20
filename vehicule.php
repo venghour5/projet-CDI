@@ -1,14 +1,22 @@
 ﻿<?php
 session_start();
+require_once 'db.php';
+require_once __DIR__ . '/src/reservation_workflow.php';
 if (!isset($_SESSION['id_user'])) {
     header("Location: login.php");
     exit();
 }
 
-if ((int)($_SESSION['role'] ?? -1) !== 0) {
+if (!in_array((int)($_SESSION['role'] ?? -1), [1, 3, 4], true)) {
     header("Location: cdi.php");
     exit();
 }
+
+ensureReservationWorkflowSchema($pdo);
+$currentRole = (int)($_SESSION['role'] ?? -1);
+$currentLogin = (string)($_SESSION['login'] ?? '');
+$approvedReservations = fetchApprovedReservations($pdo, 1);
+$teacherNames = fetchTeacherNames($pdo);
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -17,7 +25,7 @@ if ((int)($_SESSION['role'] ?? -1) !== 0) {
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Réservation Véhicule</title>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style-reservation.css" />
+  <link rel="stylesheet" href="style-reservation.css?v=20260518" />
 </head>
 <body>
 
@@ -26,15 +34,18 @@ if ((int)($_SESSION['role'] ?? -1) !== 0) {
       <div class="logo-lycee">
         <a href="index.php">
           <span class="logo-mark">CDI</span>
-          CDI <span class="logo-separator">-</span> Lycee
+          CDI <span class="logo-separator">-</span> Lycée
         </a>
       </div>
       <ul class="nav-links">
-        <li><a href="vehicule.php" class="active">Vehicule</a></li>
+        <li><a href="vehicule.php" class="active">Véhicule</a></li>
         <li><a href="radio.php">Salle radio</a></li>
         <li><a href="mobile.php">Classe mobile</a></li>
-        <li><a href="logout.php">Deconnexion</a></li>
-        <li class="admin-pill">Admin <?php echo htmlspecialchars($_SESSION['login']); ?></li>
+        <?php if (in_array($currentRole, [1, 4], true)): ?>
+          <li><a href="reservation_validation.php">Confirmation</a></li>
+        <?php endif; ?>
+        <li><a href="logout.php">Déconnexion</a></li>
+        <li class="admin-pill"><?php echo htmlspecialchars((string)($_SESSION['login'] ?? 'Compte')); ?></li>
       </ul>
     </nav>
   </header>
@@ -43,13 +54,17 @@ if ((int)($_SESSION['role'] ?? -1) !== 0) {
     <div class="reservation-layout">
 
       <section class="agenda-card">
-        <div class="resource-tabs">
-          <button class="resource-btn active" type="button">Véhicule</button>
-          <button class="resource-btn" type="button" onclick="window.location.href='radio.php'">Salle radio</button>
-          <button class="resource-btn" type="button" onclick="window.location.href='mobile.php'">Classe mobile</button>
-        </div>
-
         <h2 class="agenda-title">Planning de réservation véhicule</h2>
+        <div class="vehicle-tabs" id="vehicleTabs">
+          <button type="button" class="vehicle-btn active" data-vehicle="Renault">Renault</button>
+          <button type="button" class="vehicle-btn" data-vehicle="Toyota">Toyota</button>
+          <button type="button" class="vehicle-btn" data-vehicle="Peugeot">Peugeot</button>
+        </div>
+        <div class="week-nav">
+          <button type="button" class="week-nav-btn" id="prevWeekBtn" aria-label="Semaine précédente" title="Semaine précédente">&larr;</button>
+          <span class="week-range" id="weekRangeLabel"></span>
+          <button type="button" class="week-nav-btn" id="nextWeekBtn" aria-label="Semaine suivante" title="Semaine suivante">&rarr;</button>
+        </div>
 
         <div class="agenda-grid">
           <div class="corner"></div>
@@ -151,6 +166,7 @@ if ((int)($_SESSION['role'] ?? -1) !== 0) {
         <div class="history-list" id="historyList">
           <p class="history-empty" id="historyEmpty">Aucune réservation pour le moment.</p>
         </div>
+        <button type="button" class="history-toggle-btn hidden" id="historyToggleBtn">Voir plus</button>
 
         <div class="legend-box">
           <h3 class="legend-title">Professeurs et couleurs</h3>
@@ -171,7 +187,12 @@ if ((int)($_SESSION['role'] ?? -1) !== 0) {
 
       <div class="modal-group">
         <label for="teacherName">Nom du professeur</label>
-        <input type="text" id="teacherName" placeholder="Ex : Mme Dupont">
+        <input type="text" id="teacherName" list="teacherSuggestionsVehicule" placeholder="Ex : Mme Dupont" autocomplete="off">
+        <datalist id="teacherSuggestionsVehicule">
+          <?php foreach ($teacherNames as $teacherName): ?>
+            <option value="<?php echo htmlspecialchars((string)$teacherName); ?>"></option>
+          <?php endforeach; ?>
+        </datalist>
       </div>
 
       <div class="modal-group">
@@ -181,6 +202,11 @@ if ((int)($_SESSION['role'] ?? -1) !== 0) {
           <option value="2">2 heures</option>
           <option value="3">3 heures</option>
           <option value="4">4 heures</option>
+          <option value="5">5 heures</option>
+          <option value="6">6 heures</option>
+          <option value="7">7 heures</option>
+          <option value="8">8 heures</option>
+          <option value="9">Journée entière</option>
         </select>
       </div>
 
@@ -192,10 +218,23 @@ if ((int)($_SESSION['role'] ?? -1) !== 0) {
   </div>
 
   <script>
-    const slots = document.querySelectorAll(".slot");
+    const CURRENT_ROLE = <?php echo (int)$currentRole; ?>;
+    const CURRENT_LOGIN = <?php echo json_encode($currentLogin, JSON_UNESCAPED_UNICODE); ?>;
+    const RESOURCE_ID = 1;
+    const RESOURCE_NAME = "Véhicule";
+    const APPROVED_RESERVATIONS = <?php echo json_encode($approvedReservations, JSON_UNESCAPED_UNICODE); ?>;
+
+    const slots = Array.from(document.querySelectorAll(".slot"));
+    const agendaGrid = document.querySelector(".agenda-grid");
+    const dayHeaders = Array.from(document.querySelectorAll(".agenda-grid .day-header"));
     const historyList = document.getElementById("historyList");
     const historyEmpty = document.getElementById("historyEmpty");
+    const historyToggleBtn = document.getElementById("historyToggleBtn");
     const legendList = document.getElementById("legendList");
+    const weekRangeLabel = document.getElementById("weekRangeLabel");
+    const prevWeekBtn = document.getElementById("prevWeekBtn");
+    const nextWeekBtn = document.getElementById("nextWeekBtn");
+    const vehicleButtons = Array.from(document.querySelectorAll(".vehicle-btn"));
 
     const reservationModal = document.getElementById("reservationModal");
     const selectedSlotInfo = document.getElementById("selectedSlotInfo");
@@ -203,42 +242,267 @@ if ((int)($_SESSION['role'] ?? -1) !== 0) {
     const durationSelect = document.getElementById("durationSelect");
     const cancelReservation = document.getElementById("cancelReservation");
     const confirmReservation = document.getElementById("confirmReservation");
+    const isProf = CURRENT_ROLE === 3;
 
     const times = ["8h35", "9h35", "10h45", "11h45", "13h15", "14h15", "15h25", "16h25", "17h20"];
-
     const teacherColors = {};
-    const colorPalette = ["#e74c3c","#3498db","#27ae60","#f39c12","#9b59b6","#1abc9c","#e67e22","#2ecc71","#34495e","#d35400","#8e44ad","#16a085"];
+    const colorPalette = ["#e74c3c", "#3498db", "#27ae60", "#f39c12", "#9b59b6", "#1abc9c", "#e67e22", "#2ecc71", "#34495e", "#d35400", "#8e44ad", "#16a085"];
 
     let colorIndex = 0;
     let selectedSlot = null;
+    let currentWeekOffset = 0;
+    let weekDays = [];
+    let weekDayLabelByIso = {};
+    let historyLoaded = false;
+    let historyExpanded = false;
+    let selectedVehicle = "Renault";
+
+    function updateSelectedSlotInfoText() {
+      if (!selectedSlot || !selectedSlotInfo || !durationSelect) return;
+      const dayLabel = selectedSlot.dataset.dayLabel || selectedSlot.dataset.day;
+      const durationValue = parseInt(durationSelect.value, 10);
+      if (durationValue === times.length) {
+        selectedSlotInfo.textContent = `Créneau sélectionné : ${dayLabel} de ${times[0]} à ${times[times.length - 1]} (${selectedVehicle})`;
+      } else {
+        selectedSlotInfo.textContent = `Créneau sélectionné : ${dayLabel} à ${selectedSlot.dataset.time} (${selectedVehicle})`;
+      }
+    }
+
+    function pad2(value) {
+      return String(value).padStart(2, "0");
+    }
+
+    function normalizeVehicleName(value) {
+      return ["Renault", "Toyota", "Peugeot"].includes(value) ? value : "Renault";
+    }
+
+    function setActiveVehicle(vehicleName) {
+      selectedVehicle = normalizeVehicleName(vehicleName);
+      vehicleButtons.forEach((button) => {
+        button.classList.toggle("active", button.dataset.vehicle === selectedVehicle);
+      });
+      selectedSlot = null;
+      refreshWeek();
+    }
+
+    function buildWeekDays(weekOffset = 0) {
+      const names = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi"];
+      const now = new Date();
+      const mondayOffset = (now.getDay() + 6) % 7;
+      const monday = new Date(now);
+      monday.setHours(0, 0, 0, 0);
+      monday.setDate(now.getDate() - mondayOffset + (weekOffset * 7));
+
+      return names.map((name, index) => {
+        const d = new Date(monday);
+        d.setDate(monday.getDate() + index);
+        const iso = `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+        const display = `${name} ${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}`;
+        return { iso, display, date: d };
+      });
+    }
+
+    function displayDayLabel(dayValue) {
+      if (weekDayLabelByIso[dayValue]) {
+        return weekDayLabelByIso[dayValue];
+      }
+      if (/^\d{4}-\d{2}-\d{2}$/.test(dayValue)) {
+        const parts = dayValue.split("-");
+        return `${parts[2]}/${parts[1]}`;
+      }
+      return dayValue;
+    }
+
+    function isPastDay(dayKey) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(dayKey)) return false;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const dayDate = new Date(`${dayKey}T00:00:00`);
+      return dayDate < today;
+    }
+
+    function updateWeekRangeLabel() {
+      if (!weekRangeLabel || weekDays.length === 0) return;
+      const first = weekDays[0].display.split(" ")[1];
+      const last = weekDays[weekDays.length - 1].display.split(" ")[1];
+      weekRangeLabel.textContent = `Semaine du ${first} au ${last}`;
+    }
+
+    function applyCalendarLayout() {
+      dayHeaders.forEach((header, index) => {
+        if (index < weekDays.length) {
+          header.textContent = weekDays[index].display;
+        } else {
+          header.remove();
+        }
+      });
+
+      times.forEach((time) => {
+        const rowSlots = Array.from(document.querySelectorAll(`.agenda-grid .slot[data-time="${time}"]`));
+        rowSlots.forEach((slot, index) => {
+          if (index < weekDays.length) {
+            slot.dataset.day = weekDays[index].iso;
+            slot.dataset.dayLabel = weekDays[index].display;
+          } else {
+            slot.remove();
+          }
+        });
+      });
+
+      if (agendaGrid) {
+        agendaGrid.style.gridTemplateColumns = "90px repeat(5, 1fr)";
+      }
+    }
 
     function getTeacherColor(teacherName) {
       if (!teacherColors[teacherName]) {
         teacherColors[teacherName] = colorPalette[colorIndex % colorPalette.length];
         colorIndex++;
-        renderLegend();
       }
       return teacherColors[teacherName];
     }
 
-    function renderLegend() {
-      const names = Object.keys(teacherColors);
-
+    function renderLegend(activeNames = null) {
+      const names = Array.isArray(activeNames) ? activeNames : Object.keys(teacherColors);
       if (names.length === 0) {
         legendList.innerHTML = '<p class="legend-empty">Aucun professeur enregistré.</p>';
         return;
       }
-
       legendList.innerHTML = "";
-
       names.forEach(name => {
         const item = document.createElement("div");
         item.className = "legend-item";
-        item.innerHTML = `
-          <span class="legend-color" style="background-color: ${teacherColors[name]};"></span>
-          <span class="legend-name">${name}</span>
-        `;
+        item.innerHTML = `<span class="legend-color" style="background-color: ${teacherColors[name]};"></span><span class="legend-name">${name}</span>`;
         legendList.appendChild(item);
+      });
+    }
+
+    function clearAgendaReservations() {
+      slots.forEach((slot) => {
+        slot.classList.remove("reserved");
+        slot.style.backgroundColor = "";
+        slot.style.color = "";
+        slot.textContent = "";
+      });
+    }
+
+    function markReservation(dayKey, startTime, duration, teacherName) {
+      const startIndex = times.indexOf(startTime);
+      if (startIndex < 0) return;
+      const endIndex = startIndex + duration - 1;
+      const daySlots = [...document.querySelectorAll(`.slot[data-day="${dayKey}"]`)];
+      const teacherColor = getTeacherColor(teacherName);
+
+      for (let i = startIndex; i <= endIndex; i++) {
+        const slot = daySlots[i];
+        if (!slot) continue;
+        slot.classList.add("reserved");
+        slot.style.backgroundColor = teacherColor;
+        slot.style.color = "#fff";
+        slot.textContent = i === startIndex ? teacherName : "";
+      }
+    }
+
+    function appendHistory(dayLabel, startTime, duration, teacherName, statusText, isRequest = false, vehicleName = null) {
+      const startIndex = times.indexOf(startTime);
+      const endTime = startIndex >= 0 && startIndex + duration - 1 < times.length ? times[startIndex + duration - 1] : startTime;
+      if (historyEmpty) historyEmpty.remove();
+      const item = document.createElement("div");
+      item.className = "history-item";
+      const actionText = isRequest ? "Demande de réservation" : "Véhicule réservé";
+      const vehicleLine = vehicleName ? `<span>Véhicule : ${vehicleName}</span>` : "";
+      item.innerHTML = `<strong>${dayLabel}</strong><span>${actionText} de ${startTime} à ${endTime}</span>${vehicleLine}<span>Professeur : ${teacherName}</span><span>Durée : ${duration} heure(s)</span><span>Statut : ${statusText}</span>`;
+      historyList.prepend(item);
+      updateHistoryListCompact();
+    }
+
+    function updateHistoryListCompact() {
+      if (!historyList) return;
+      const count = historyList.querySelectorAll(".history-item").length;
+      const shouldCompact = count > 2;
+
+      if (historyToggleBtn) {
+        historyToggleBtn.classList.toggle("hidden", !shouldCompact);
+        historyToggleBtn.textContent = historyExpanded ? "Voir moins" : "Voir plus";
+      }
+
+      historyList.classList.toggle("expanded", historyExpanded && shouldCompact);
+      historyList.classList.toggle("compact", !historyExpanded && shouldCompact);
+    }
+
+    function renderApprovedReservationsForWeek() {
+      clearAgendaReservations();
+      const activeTeacherNames = new Set();
+      if (!Array.isArray(APPROVED_RESERVATIONS)) { renderLegend([]); return; }
+      APPROVED_RESERVATIONS.forEach((reservation) => {
+        const dayKey = reservation.day || "";
+        if (!weekDayLabelByIso[dayKey]) return;
+        const reservationVehicle = normalizeVehicleName(reservation.vehicle_name || "Renault");
+        if (reservationVehicle !== selectedVehicle) return;
+        const duration = Number(reservation.duree || 1);
+        const teacher = reservation.demandeur || "Utilisateur";
+        markReservation(dayKey, reservation.heure_debut || "", duration, teacher);
+        if (!isPastDay(dayKey)) {
+          activeTeacherNames.add(teacher);
+        }
+      });
+      renderLegend(Array.from(activeTeacherNames));
+    }
+
+    function loadHistoryOnce() {
+      if (historyLoaded || !Array.isArray(APPROVED_RESERVATIONS)) return;
+      APPROVED_RESERVATIONS.forEach((reservation) => {
+        const dayKey = reservation.day || "";
+        const dayLabel = displayDayLabel(dayKey);
+        const duration = Number(reservation.duree || 1);
+        const teacher = reservation.demandeur || "Utilisateur";
+        appendHistory(dayLabel, reservation.heure_debut || "", duration, teacher, "Confirmée", false, reservation.vehicle_name || null);
+      });
+      updateHistoryListCompact();
+      historyLoaded = true;
+    }
+
+    if (historyToggleBtn) {
+      historyToggleBtn.addEventListener("click", () => {
+        historyExpanded = !historyExpanded;
+        updateHistoryListCompact();
+      });
+    }
+
+    function refreshWeek() {
+      weekDays = buildWeekDays(currentWeekOffset);
+      weekDayLabelByIso = Object.fromEntries(weekDays.map((d) => [d.iso, d.display]));
+      updateWeekRangeLabel();
+      applyCalendarLayout();
+      renderApprovedReservationsForWeek();
+    }
+
+    if (isProf && confirmReservation) {
+      confirmReservation.textContent = "Demander";
+    }
+
+    vehicleButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        setActiveVehicle(button.dataset.vehicle || "Renault");
+      });
+    });
+
+    setActiveVehicle("Renault");
+    loadHistoryOnce();
+
+    if (prevWeekBtn) {
+      prevWeekBtn.addEventListener("click", () => {
+        currentWeekOffset -= 1;
+        selectedSlot = null;
+        refreshWeek();
+      });
+    }
+
+    if (nextWeekBtn) {
+      nextWeekBtn.addEventListener("click", () => {
+        currentWeekOffset += 1;
+        selectedSlot = null;
+        refreshWeek();
       });
     }
 
@@ -248,78 +512,89 @@ if ((int)($_SESSION['role'] ?? -1) !== 0) {
           alert("Ce créneau est déjà réservé.");
           return;
         }
-
         selectedSlot = slot;
         teacherNameInput.value = "";
         durationSelect.value = "1";
-        selectedSlotInfo.textContent = `Créneau sélectionné : ${slot.dataset.day} à ${slot.dataset.time}`;
+        updateSelectedSlotInfoText();
         reservationModal.classList.add("active");
       });
     });
+
+    if (durationSelect) {
+      durationSelect.addEventListener("change", updateSelectedSlotInfoText);
+    }
 
     cancelReservation.addEventListener("click", () => {
       reservationModal.classList.remove("active");
       selectedSlot = null;
     });
 
-    confirmReservation.addEventListener("click", () => {
+    confirmReservation.addEventListener("click", async () => {
       if (!selectedSlot) return;
 
-      const teacherName = teacherNameInput.value.trim();
+      const teacherName = (teacherNameInput.value || "").trim();
       const duration = parseInt(durationSelect.value, 10);
-
-      if (!teacherName) {
-        alert("Veuillez saisir le nom du professeur.");
-        return;
-      }
-
-      const day = selectedSlot.dataset.day;
+      const dayKey = selectedSlot.dataset.day;
+      const dayLabel = selectedSlot.dataset.dayLabel || dayKey;
       const startTime = selectedSlot.dataset.time;
-      const startIndex = times.indexOf(startTime);
-      const endIndex = startIndex + duration - 1;
+      const vehicleName = selectedVehicle;
+      const isFullDay = duration === 9;
+      const effectiveStartTime = isFullDay ? times[0] : startTime;
+      const effectiveDuration = isFullDay ? times.length : duration;
+      const startIndex = times.indexOf(effectiveStartTime);
+      const endIndex = startIndex + effectiveDuration - 1;
 
-      if (endIndex >= times.length) {
+      if (startIndex < 0 || endIndex >= times.length) {
         alert("La réservation dépasse la fin de la journée.");
         return;
       }
+      if (!teacherName) {
+        alert("Nom du professeur obligatoire.");
+        return;
+      }
+      if (!vehicleName) {
+        alert("Choisis un véhicule.");
+        return;
+      }
 
-      const daySlots = [...document.querySelectorAll(`.slot[data-day="${day}"]`)];
-
-      for (let i = startIndex; i <= endIndex; i++) {
-        if (daySlots[i].classList.contains("reserved")) {
-          alert("Un des créneaux est déjà réservé.");
+      try {
+        const response = await fetch("reservation_request.php", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ resource_id: RESOURCE_ID, day: dayKey, heure_debut: effectiveStartTime, duree: effectiveDuration, vehicle_name: vehicleName, teacher_name: teacherName, full_day: isFullDay })
+        });
+        const payload = await response.json();
+        if (!response.ok || !payload.ok) {
+          let message = CURRENT_ROLE === 3
+            ? "Demande impossible. Merci de réessayer."
+            : "Réservation impossible.";
+          if (payload.error === "slot_taken") {
+            message = "Ce créneau est déjà réservé.";
+          } else if (payload.error === "invalid_duration") {
+            message = "Durée invalide pour ce créneau.";
+          } else if (payload.error === "invalid_vehicle") {
+            message = "Véhicule invalide.";
+          } else if (payload.error === "invalid_teacher") {
+            message = "Professeur invalide.";
+          }
+          alert(message);
           return;
         }
+
+        if (CURRENT_ROLE === 3) {
+          appendHistory(dayLabel, effectiveStartTime, effectiveDuration, teacherName, "En attente de confirmation", true, vehicleName);
+          alert("Demande envoyée. En attente de confirmation par l'admin réservation.");
+        } else {
+          APPROVED_RESERVATIONS.push({ day: dayKey, heure_debut: effectiveStartTime, duree: effectiveDuration, demandeur: teacherName, vehicle_name: vehicleName });
+          renderApprovedReservationsForWeek();
+          appendHistory(dayLabel, effectiveStartTime, effectiveDuration, teacherName, "Confirmée", false, vehicleName);
+        }
+
+        reservationModal.classList.remove("active");
+        selectedSlot = null;
+      } catch (error) {
+        alert("Erreur réseau. Merci de réessayer.");
       }
-
-      const teacherColor = getTeacherColor(teacherName);
-
-      for (let i = startIndex; i <= endIndex; i++) {
-        daySlots[i].classList.add("reserved");
-        daySlots[i].style.backgroundColor = teacherColor;
-        daySlots[i].style.color = "#fff";
-        daySlots[i].textContent = i === startIndex ? teacherName : "";
-      }
-
-      const endTime = times[endIndex];
-
-      if (historyEmpty) {
-        historyEmpty.remove();
-      }
-
-      const item = document.createElement("div");
-      item.className = "history-item";
-      item.innerHTML = `
-        <strong>${day}</strong>
-        <span>Véhicule réservé de ${startTime} à ${endTime}</span>
-        <span>Professeur : ${teacherName}</span>
-        <span>Durée : ${duration} heure(s)</span>
-      `;
-
-      historyList.prepend(item);
-
-      reservationModal.classList.remove("active");
-      selectedSlot = null;
     });
 
     reservationModal.addEventListener("click", (e) => {
@@ -332,6 +607,13 @@ if ((int)($_SESSION['role'] ?? -1) !== 0) {
 
 </body>
 </html>
+
+
+
+
+
+
+
 
 
 

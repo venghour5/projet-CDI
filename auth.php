@@ -27,7 +27,7 @@ if ($user) {
         }
 
         $role = isset($user['role']) ? (int)$user['role'] : -1;
-        if ($role !== 0 && $role !== 1) {
+        if (!in_array($role, [1, 2, 3, 4], true)) {
             header("Location: login.php?error=invalid");
             exit();
         }
@@ -36,10 +36,12 @@ if ($user) {
         $_SESSION['login'] = $user['nom'];
         $_SESSION['role'] = $role;
 
-        if ($role === 1) {
+        if ($role === 2) {
             header("Location: cdi.php");
-        } else {
+        } elseif ($role === 3) {
             header("Location: vehicule.php");
+        } else {
+            header("Location: index.php");
         }
         exit();
     }

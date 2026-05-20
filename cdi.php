@@ -7,7 +7,12 @@ if (!isset($_SESSION['id_user'])) {
     exit();
 }
 
-if ((int)($_SESSION['role'] ?? -1) !== 1) {
+$roleStmt = $pdo->prepare('SELECT role FROM utilisateur WHERE id = ? LIMIT 1');
+$roleStmt->execute([(int)$_SESSION['id_user']]);
+$liveRole = (int)($roleStmt->fetchColumn() ?: -1);
+$_SESSION['role'] = $liveRole;
+
+if (!in_array($liveRole, [1, 2], true)) {
     header("Location: vehicule.php");
     exit();
 }
@@ -46,7 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 header("Location: cdi.php?zone=$nextZoneId&success=zone_added");
                 exit();
             } catch (PDOException $e) {
-                $zoneCreateError = "Erreur base de donnees.";
+                $zoneCreateError = "Erreur base de données.";
                 $showModal = true;
             }
         }
@@ -93,6 +98,72 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         header("Location: cdi.php?zone=$zoneId&error=resource_update");
+        exit();
+    } elseif ($action === 'add_resource_manual') {
+        $zoneId = (int)($_POST['zone'] ?? 0);
+        $moduleId = (int)($_POST['module_id'] ?? 0);
+        $blocIdInput = (int)($_POST['id_bloc'] ?? 0);
+        $title = trim($_POST['titre'] ?? '');
+        $author = trim($_POST['auteur'] ?? '');
+        $cote = trim($_POST['cote'] ?? '');
+
+        if ($zoneId > 0 && $moduleId > 0 && $blocIdInput > 0 && $title !== '' && $author !== '' && $cote !== '') {
+            try {
+                $blocStmt = $pdo->prepare('SELECT id FROM bloc WHERE id = ? AND id_zone = ? AND genre = ? LIMIT 1');
+                $blocStmt->execute([$blocIdInput, $moduleId, $zoneId]);
+                $blocId = $blocStmt->fetchColumn();
+                if ($blocId === false) {
+                    header("Location: cdi.php?zone=$zoneId&error=resource_add");
+                    exit();
+                }
+
+                $nextBookId = (int)$pdo->query('SELECT COALESCE(MAX(id), 0) + 1 FROM livre')->fetchColumn();
+                if ($nextBookId <= 0) {
+                    $nextBookId = 1;
+                }
+
+                $insertStmt = $pdo->prepare('INSERT INTO livre (id, titre, auteur, cote, etat, id_bloc) VALUES (?, ?, ?, ?, 1, ?)');
+                $insertStmt->execute([
+                    $nextBookId,
+                    $title,
+                    $author,
+                    $cote,
+                    (int)$blocId,
+                ]);
+
+                header("Location: cdi.php?zone=$zoneId&success=resource_added");
+                exit();
+            } catch (PDOException $e) {
+                header("Location: cdi.php?zone=$zoneId&error=resource_add");
+                exit();
+            }
+        }
+
+        header("Location: cdi.php?zone=$zoneId&error=resource_add");
+        exit();
+    } elseif ($action === 'delete_resource') {
+        $zoneId = (int)($_POST['zone'] ?? 0);
+        $resourceId = (int)($_POST['id_ressources'] ?? 0);
+
+        if ($zoneId > 0 && $resourceId > 0) {
+            try {
+                $stmt = $pdo->prepare("
+                    DELETE l
+                    FROM livre l
+                    INNER JOIN bloc b ON b.id = l.id_bloc
+                    WHERE l.id = ? AND b.genre = ?
+                ");
+                $stmt->execute([$resourceId, $zoneId]);
+
+                header("Location: cdi.php?zone=$zoneId&success=resource_deleted");
+                exit();
+            } catch (PDOException $e) {
+                header("Location: cdi.php?zone=$zoneId&error=resource_delete");
+                exit();
+            }
+        }
+
+        header("Location: cdi.php?zone=$zoneId&error=resource_delete");
         exit();
     } elseif ($action === 'delete_zone') {
         $zoneId = (int)($_POST['id_zone'] ?? 0);
@@ -171,7 +242,7 @@ try {
     $hasCurrentZone = !empty($zoneInfo) && isset($zoneInfo['id_zone']);
 
     $stmtZoneModules = $pdo->prepare("
-        SELECT z.id AS id_module, z.ip_address
+        SELECT z.id AS id_module, z.ip_address, z.nom_module, b.id AS id_bloc
         FROM zone z
         INNER JOIN bloc b ON b.id_zone = z.id
         WHERE b.genre = ?
@@ -180,14 +251,17 @@ try {
     $stmtZoneModules->execute([$currentZoneId]);
     $zoneModules = $stmtZoneModules->fetchAll(PDO::FETCH_ASSOC);
 
+    $moduleDisplayIndex = 0;
     foreach ($zoneModules as $module) {
         $moduleId = trim((string)($module['id_module'] ?? ''));
-        $ipAddress = trim((string)($module['ip_address'] ?? ''));
+        $moduleName = trim((string)($module['nom_module'] ?? ''));
 
         if ($moduleId !== '') {
+            $moduleDisplayIndex++;
             $zoneModuleRows[] = [
                 'id_module' => $moduleId,
-                'label' => 'ESP ' . ($ipAddress !== '' ? $ipAddress : $moduleId),
+                'id_bloc' => isset($module['id_bloc']) ? (int)$module['id_bloc'] : 0,
+                'label' => $moduleName !== '' ? $moduleName : ('Module ' . $moduleDisplayIndex),
             ];
             $zoneModuleIds[] = $moduleId;
         }
@@ -220,6 +294,7 @@ try {
 
             $title = trim((string)($moduleResource['titre'] ?? ''));
             $resourcesByModule[$moduleKey][] = [
+                'id' => isset($moduleResource['id']) ? (int)$moduleResource['id'] : 0,
                 'titre' => $title !== '' ? $title : '--',
             ];
         }
@@ -235,13 +310,17 @@ if (isset($_GET['success'])) {
     $successCode = $_GET['success'];
 
     if ($successCode === 'zone_added') {
-        $feedbackMessage = 'Zone ajoutee avec succes.';
+        $feedbackMessage = 'Zone ajoutée avec succès.';
     } elseif ($successCode === 'zone_updated') {
-        $feedbackMessage = 'Nom de la zone modifie.';
+        $feedbackMessage = 'Nom de la zone modifié.';
     } elseif ($successCode === 'resource_updated') {
-        $feedbackMessage = 'Nom du livre modifie.';
+        $feedbackMessage = 'Nom du livre modifié.';
+    } elseif ($successCode === 'resource_added') {
+        $feedbackMessage = 'Livre ajouté avec succès.';
+    } elseif ($successCode === 'resource_deleted') {
+        $feedbackMessage = 'Livre supprimé avec succès.';
     } elseif ($successCode === 'zone_deleted') {
-        $feedbackMessage = 'Zone supprimee.';
+        $feedbackMessage = 'Zone supprimée.';
     }
 }
 
@@ -253,10 +332,16 @@ if ($feedbackMessage === '' && isset($_GET['error'])) {
         $feedbackMessage = 'Impossible de modifier le nom de la zone.';
     } elseif ($errorCode === 'resource_update') {
         $feedbackMessage = 'Impossible de modifier le nom du livre.';
+    } elseif ($errorCode === 'resource_add') {
+        $feedbackMessage = "Impossible d'ajouter le livre.";
+    } elseif ($errorCode === 'resource_delete') {
+        $feedbackMessage = 'Impossible de supprimer le livre.';
     } elseif ($errorCode === 'zone_delete') {
         $feedbackMessage = 'Impossible de supprimer la zone.';
     }
 }
+
+$styleVersion = (string)(@filemtime(__DIR__ . '/style.css') ?: '1');
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -266,7 +351,7 @@ if ($feedbackMessage === '' && isset($_GET['error'])) {
     <title>Gestion CDI - Zone CDI</title>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="style.css?v=<?php echo urlencode($styleVersion); ?>" />
 </head>
 <body class="dashboard-body">
     <header class="site-header">
@@ -274,15 +359,15 @@ if ($feedbackMessage === '' && isset($_GET['error'])) {
             <div class="logo-lycee">
                 <a href="index.php">
                     <span class="logo-mark">CDI</span>
-                    CDI <span class="logo-separator">-</span> Lycee
+                    CDI <span class="logo-separator">-</span> Lycée
                 </a>
             </div>
 
             <ul class="nav-links">
                 <li><a href="cdi.php" class="active">Zone CDI</a></li>
                 <li><a href="esp.php">Modules ESP</a></li>
-                <li><a href="logout.php">Deconnexion</a></li>
-                <li class="admin-pill">Admin <?php echo htmlspecialchars($_SESSION['login'] ?? 'Admin'); ?></li>
+                <li><a href="logout.php">Déconnexion</a></li>
+                <li class="admin-pill"><?php echo htmlspecialchars((string)($_SESSION['login'] ?? 'Compte')); ?></li>
             </ul>
         </nav>
     </header>
@@ -297,7 +382,7 @@ if ($feedbackMessage === '' && isset($_GET['error'])) {
                 <a href="cdi.php?zone=<?php echo (int)$z['id_zone']; ?>" class="module-item <?php echo ((int)$z['id_zone'] === $currentZoneId) ? 'active' : ''; ?>" style="text-decoration:none; color:inherit;">
                     <span class="module-name"><?php echo htmlspecialchars($z['nom_zone']); ?></span>
                     <span class="status-badge <?php echo $isConnected ? 'connected' : 'disconnected'; ?>">
-                        <?php echo $isConnected ? 'Connecte' : 'Pas connecte'; ?>
+                        <?php echo $isConnected ? 'Connecté' : 'Pas connecté'; ?>
                     </span>
                 </a>
             <?php endforeach; ?>
@@ -351,52 +436,84 @@ if ($feedbackMessage === '' && isset($_GET['error'])) {
 
             <div class="panels-container">
                 <div class="panel esp-associated-panel">
-                    <div class="panel-title">ESP associes</div>
+                    <div class="panel-title">ESP associés</div>
+                    <p class="esp-associated-subtitle">Vue rapide des modules et des livres rattachés à la zone.</p>
 
                     <?php if (!empty($zoneModuleRows)): ?>
                         <div class="esp-associated-list">
                             <?php foreach ($zoneModuleRows as $moduleRow):
                                 $moduleResourceList = $resourcesByModule[$moduleRow['id_module']] ?? [];
+                                $resourceCount = count($moduleResourceList);
                                 $titleColumns = 3;
+                                $visibleRows = 2;
+                                $showBooksToggle = $resourceCount > ($titleColumns * $visibleRows);
                             ?>
                                 <div class="esp-group">
-                                    <div class="esp-module-name"><?php echo htmlspecialchars($moduleRow['label']); ?></div>
-                                    <div class="esp-table-wrap">
-                                        <table class="esp-resource-table">
-                                            <thead>
-                                                <tr>
-                                                    <th colspan="<?php echo $titleColumns; ?>">Titre</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                        <?php if (!empty($moduleResourceList)): ?>
-                                            <?php
-                                                $titles = array_map(
-                                                    static fn(array $resourceItem): string => (string)($resourceItem['titre'] ?? '--'),
-                                                    $moduleResourceList
-                                                );
-                                                $titleRows = array_chunk($titles, $titleColumns);
-                                            ?>
-                                            <?php foreach ($titleRows as $titleRow): ?>
-                                                <tr>
-                                                    <?php for ($col = 0; $col < $titleColumns; $col++): ?>
-                                                        <td><?php echo htmlspecialchars($titleRow[$col] ?? ''); ?></td>
-                                                    <?php endfor; ?>
-                                                </tr>
-                                            <?php endforeach; ?>
-                                        <?php else: ?>
-                                                <tr>
-                                                    <td colspan="<?php echo $titleColumns; ?>" class="esp-line-empty">Aucune ressource liee</td>
-                                                </tr>
-                                        <?php endif; ?>
-                                            </tbody>
-                                        </table>
+                                    <div class="esp-group-header">
+                                        <div class="esp-module-actions">
+                                            <div class="esp-module-name"><?php echo htmlspecialchars($moduleRow['label']); ?></div>
+                                            <button type="button" class="esp-led-btn">Allumer LED</button>
+                                            <button
+                                                type="button"
+                                                class="esp-add-book-btn open-add-book-modal"
+                                                data-module-id="<?php echo (int)$moduleRow['id_module']; ?>"
+                                                data-bloc-id="<?php echo (int)$moduleRow['id_bloc']; ?>"
+                                                data-module-name="<?php echo htmlspecialchars((string)$moduleRow['label'], ENT_QUOTES); ?>"
+                                            >
+                                                Ajouter livre
+                                            </button>
+                                        </div>
+                                        <span class="esp-resource-count"><?php echo $resourceCount; ?> livre<?php echo $resourceCount > 1 ? 's' : ''; ?></span>
                                     </div>
+
+                                    <?php if (!empty($moduleResourceList)): ?>
+                                        <div class="esp-table-wrap <?php echo $showBooksToggle ? 'compact' : ''; ?>" data-books-wrap>
+                                            <table class="esp-resource-table">
+                                                <thead>
+                                                    <tr>
+                                                        <th colspan="<?php echo $titleColumns; ?>">Titre</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <?php
+                                                        $resourceRows = array_chunk($moduleResourceList, $titleColumns);
+                                                    ?>
+                                                    <?php foreach ($resourceRows as $resourceRow): ?>
+                                                        <tr>
+                                                            <?php for ($col = 0; $col < $titleColumns; $col++): ?>
+                                                                <?php $bookItem = $resourceRow[$col] ?? null; ?>
+                                                                <td>
+                                                                    <?php if (is_array($bookItem)): ?>
+                                                                        <div class="book-cell-content">
+                                                                            <span><?php echo htmlspecialchars((string)($bookItem['titre'] ?? '')); ?></span>
+                                                                            <form method="POST" class="inline-form" onsubmit="return confirm('Supprimer ce livre ?');">
+                                                                                <input type="hidden" name="action" value="delete_resource">
+                                                                                <input type="hidden" name="zone" value="<?php echo (int)$currentZoneId; ?>">
+                                                                                <input type="hidden" name="id_ressources" value="<?php echo (int)($bookItem['id'] ?? 0); ?>">
+                                                                                <button type="submit" class="book-delete-btn" title="Supprimer le livre">
+                                                                                    <i class="fa-regular fa-trash-can"></i>
+                                                                                </button>
+                                                                            </form>
+                                                                        </div>
+                                                                    <?php endif; ?>
+                                                                </td>
+                                                            <?php endfor; ?>
+                                                        </tr>
+                                                    <?php endforeach; ?>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        <?php if ($showBooksToggle): ?>
+                                            <button type="button" class="esp-books-toggle-btn" data-books-toggle>Voir plus</button>
+                                        <?php endif; ?>
+                                    <?php else: ?>
+                                        <div class="esp-line-empty">Aucune ressource liée</div>
+                                    <?php endif; ?>
                                 </div>
                             <?php endforeach; ?>
                         </div>
                     <?php else: ?>
-                        <div class="esp-associated-empty-state">Aucun module ESP associe</div>
+                        <div class="esp-associated-empty-state">Aucun module ESP associé</div>
                     <?php endif; ?>
                 </div>
             </div>
@@ -463,6 +580,38 @@ if ($feedbackMessage === '' && isset($_GET['error'])) {
         </div>
     </div>
 
+    <div class="modal-overlay" id="modalAddBook">
+        <div class="modal-card">
+            <button class="modal-close" data-close-modal="modalAddBook">&times;</button>
+            <h2 style="text-align:center;">Ajouter un livre</h2>
+            <p class="modal-subtext" id="addBookModalText">Ajout manuel dans ce module.</p>
+
+            <form method="POST" class="zone-form">
+                <input type="hidden" name="action" value="add_resource_manual">
+                <input type="hidden" name="zone" value="<?php echo (int)$currentZoneId; ?>">
+                <input type="hidden" name="module_id" id="addBookModuleIdInput" value="">
+
+                <label for="addBookBlocIdInput">ID bloc</label>
+                <input id="addBookBlocIdInput" type="number" min="1" name="id_bloc" required placeholder="Ex: 6">
+                <small class="modal-subtext" id="addBookBlocHelp">Utilise l'ID bloc du module.</small>
+
+                <label for="addBookTitleInput">Titre</label>
+                <input id="addBookTitleInput" type="text" name="titre" required placeholder="Ex: Les Misérables">
+
+                <label for="addBookAuthorInput">Auteur</label>
+                <input id="addBookAuthorInput" type="text" name="auteur" required placeholder="Ex: Victor Hugo">
+
+                <label for="addBookCoteInput">Cote</label>
+                <input id="addBookCoteInput" type="text" name="cote" required placeholder="Ex: 840 HUG">
+
+                <div class="modal-actions">
+                    <button type="button" class="btn-modal-secondary" data-close-modal="modalAddBook">Annuler</button>
+                    <button type="submit" class="btn-modal-danger">Ajouter</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <form method="POST" id="deleteZoneForm" class="hidden-form">
         <input type="hidden" name="action" value="delete_zone">
         <input type="hidden" name="id_zone" id="deleteZoneIdInput" value="">
@@ -472,6 +621,7 @@ if ($feedbackMessage === '' && isset($_GET['error'])) {
         const modal = document.getElementById('modalZone');
         const modalEdit = document.getElementById('modalEdit');
         const modalDelete = document.getElementById('modalDelete');
+        const modalAddBook = document.getElementById('modalAddBook');
         const openBtn = document.getElementById('openZoneModal');
         const closeBtn = document.getElementById('closeZoneModal');
 
@@ -496,6 +646,9 @@ if ($feedbackMessage === '' && isset($_GET['error'])) {
             }
             if (event.target === modalDelete) {
                 modalDelete.classList.remove('active');
+            }
+            if (event.target === modalAddBook) {
+                modalAddBook.classList.remove('active');
             }
         });
 
@@ -620,6 +773,59 @@ if ($feedbackMessage === '' && isset($_GET['error'])) {
                 deleteZoneForm.submit();
             });
         }
+
+        const addBookModalText = document.getElementById('addBookModalText');
+        const addBookModuleIdInput = document.getElementById('addBookModuleIdInput');
+        const addBookBlocIdInput = document.getElementById('addBookBlocIdInput');
+        const addBookBlocHelp = document.getElementById('addBookBlocHelp');
+        const addBookTitleInput = document.getElementById('addBookTitleInput');
+
+        document.querySelectorAll('.open-add-book-modal').forEach((button) => {
+            button.addEventListener('click', () => {
+                const moduleId = button.dataset.moduleId || '';
+                const blocId = button.dataset.blocId || '';
+                const moduleName = button.dataset.moduleName || 'ce module';
+
+                if (addBookModuleIdInput) {
+                    addBookModuleIdInput.value = moduleId;
+                }
+                if (addBookBlocIdInput) {
+                    addBookBlocIdInput.value = blocId;
+                }
+                if (addBookBlocHelp) {
+                    addBookBlocHelp.textContent = blocId !== ''
+                        ? `ID bloc du module ${moduleName} : ${blocId}`
+                        : "Utilise l'ID bloc du module.";
+                }
+                if (addBookModalText) {
+                    addBookModalText.textContent = `Ajout manuel dans ${moduleName}.`;
+                }
+                if (addBookTitleInput) {
+                    addBookTitleInput.value = '';
+                }
+                if (modalAddBook) {
+                    modalAddBook.classList.add('active');
+                }
+            });
+        });
+
+        document.querySelectorAll('[data-books-toggle]').forEach((button) => {
+            button.addEventListener('click', () => {
+                const group = button.closest('.esp-group');
+                if (!group) {
+                    return;
+                }
+
+                const tableWrap = group.querySelector('[data-books-wrap]');
+                if (!tableWrap) {
+                    return;
+                }
+
+                const isExpanded = tableWrap.classList.toggle('expanded');
+                tableWrap.classList.toggle('compact', !isExpanded);
+                button.textContent = isExpanded ? 'Voir moins' : 'Voir plus';
+            });
+        });
 
     </script>
 </body>

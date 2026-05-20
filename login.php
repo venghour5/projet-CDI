@@ -2,14 +2,18 @@
 session_start();
 if (isset($_SESSION['id_user'])) {
     $role = isset($_SESSION['role']) ? (int)$_SESSION['role'] : -1;
-
-    if ($role === 1) {
+    if ($role === 2) {
         header("Location: cdi.php");
         exit();
     }
 
-    if ($role === 0) {
+    if ($role === 3) {
         header("Location: vehicule.php");
+        exit();
+    }
+
+    if (in_array($role, [1, 4], true)) {
+        header("Location: index.php");
         exit();
     }
 
@@ -17,6 +21,7 @@ if (isset($_SESSION['id_user'])) {
     session_destroy();
 }
 $error = $_GET['error'] ?? '';
+$styleVersion = (string)(@filemtime(__DIR__ . '/style.css') ?: '1');
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -25,7 +30,7 @@ $error = $_GET['error'] ?? '';
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Connexion espace CDI</title>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="style.css?v=<?php echo urlencode($styleVersion); ?>" />
 </head>
 <body>
 
@@ -34,7 +39,7 @@ $error = $_GET['error'] ?? '';
             <div class="logo-lycee">
                 <a href="index.php">
                     <span class="logo-mark">CDI</span>
-                    CDI <span class="logo-separator">-</span> Lycee
+                    CDI <span class="logo-separator">-</span> Lycée
                 </a>
             </div>
 
@@ -54,7 +59,7 @@ $error = $_GET['error'] ?? '';
             <?php if ($error === 'invalid'): ?>
                 <p style="color:red; text-align:center;">Identifiants incorrects.</p>
             <?php elseif ($error === 'db'): ?>
-                <p style="color:red; text-align:center;">Erreur de base de donnees. Merci de vous reconnecter.</p>
+                <p style="color:red; text-align:center;">Erreur de base de données. Merci de vous reconnecter.</p>
             <?php endif; ?>
 
             <div class="input-group">
@@ -68,7 +73,6 @@ $error = $_GET['error'] ?? '';
             </div>
 
             <button type="submit" class="btn-submit">Connexion</button>
-            <p class="account-action">Pas encore de compte ? <a href="register.php">Créer un compte</a></p>
         </form>
     </main>
 
