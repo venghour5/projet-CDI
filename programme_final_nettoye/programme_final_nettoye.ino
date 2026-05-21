@@ -58,7 +58,7 @@ void sectionLED() {
 
   num_leds = LEDS_TOTAL / nouvelle_num_sections;
   num_sections = nouvelle_num_sections;
-  section_actuelle = nouvelle_section_actuelle + 1;
+  section_actuelle = nouvelle_section_actuelle - 1;
 
   server.send(200, "text/plain", "Sections changées");
 }
