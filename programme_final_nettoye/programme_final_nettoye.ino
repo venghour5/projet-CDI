@@ -4,7 +4,7 @@
 
 // Variables à modifier manuellement
 #define LED_PIN 23
-#define LEDS_TOTAL 156 // Nombre total de leds
+#define LEDS_TOTAL 150 // Nombre total de leds
 const char* ssid = "TP-Link_AP_1D6A";
 const char* password = "31901642";
 
@@ -58,7 +58,7 @@ void sectionLED() {
 
   num_leds = LEDS_TOTAL / nouvelle_num_sections;
   num_sections = nouvelle_num_sections;
-  section_actuelle = nouvelle_section_actuelle;
+  section_actuelle = nouvelle_section_actuelle + 1;
 
   server.send(200, "text/plain", "Sections changées");
 }
