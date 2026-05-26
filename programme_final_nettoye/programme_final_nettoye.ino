@@ -9,9 +9,9 @@ const char* ssid = "TP-Link_AP_1D6A";
 const char* password = "31901642";
 
 // IP statique
-IPAddress local_IP(172, 30, 167, 2);
-IPAddress gateway(172, 30, 255, 251);
-IPAddress subnet(255, 255, 0, 0);
+IPAddress local_IP(192, 168, 0, 102);
+IPAddress gateway(192, 168, 0, 254);
+IPAddress subnet(255, 255, 255, 0);
 
 // Par défaut, changera plus tard
 int num_leds = LEDS_TOTAL; // Valeur pour chaque section, entièreté de la bande par défaut
