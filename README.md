@@ -32,13 +32,13 @@ C:\xampp\php\php.exe scripts\upgrade_module_supervision_schema.php
 - Enregistrement initial d'un module:
 
 ```powershell
-C:\xampp\php\php.exe scripts\register_module.php --ip=10.1.1.4 --name=\"ESP Rayon BD\" --interval=60 --zone=1
+C:\xampp\php\php.exe scripts\register_module.php --ip=10.1.1.4 --name=\"ESP Rayon BD\" --zone=1
 ```
 
 - Generation du fichier de configuration initiale:
 
 ```powershell
-C:\xampp\php\php.exe scripts\generate_module_bootstrap.php --module=1 --api-url=http://localhost/cdi_php_app/module_heartbeat.php
+C:\xampp\php\php.exe scripts\generate_module_bootstrap.php --module=1
 ```
 
 - Scan supervision (utile en cron):

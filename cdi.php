@@ -1,21 +1,11 @@
-﻿<?php
+<?php
+header('Content-Type: text/html; charset=UTF-8');
 session_start();
 require_once "db.php";
+require_once __DIR__ . '/src/auth_session.php';
 
-if (!isset($_SESSION['id_user'])) {
-    header("Location: login.php");
-    exit();
-}
-
-$roleStmt = $pdo->prepare('SELECT role FROM utilisateur WHERE id = ? LIMIT 1');
-$roleStmt->execute([(int)$_SESSION['id_user']]);
-$liveRole = (int)($roleStmt->fetchColumn() ?: -1);
-$_SESSION['role'] = $liveRole;
-
-if (!in_array($liveRole, [1, 2], true)) {
-    header("Location: vehicule.php");
-    exit();
-}
+$sessionUser = requireAuthenticatedSessionUser($pdo, [1, 2], 'vehicule.php');
+$liveRole = (int)$sessionUser['role'];
 
 function redirectToLoginForDbIssue(): void
 {
@@ -83,11 +73,60 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             try {
                 $stmt = $pdo->prepare("
                     UPDATE livre l
-                    INNER JOIN bloc b ON b.id = l.id_bloc
+                    INNER JOIN bloc b_livre ON b_livre.id = l.id_bloc
+                    INNER JOIN bloc b_zone ON b_zone.id_zone = b_livre.id_zone
                     SET l.titre = ?
-                    WHERE l.id = ? AND b.genre = ?
+                    WHERE l.id = ? AND b_zone.genre = ?
                 ");
                 $stmt->execute([$newTitle, $resourceId, $zoneId]);
+
+                header("Location: cdi.php?zone=$zoneId&success=resource_updated");
+                exit();
+            } catch (PDOException $e) {
+                header("Location: cdi.php?zone=$zoneId&error=resource_update");
+                exit();
+            }
+        }
+
+        header("Location: cdi.php?zone=$zoneId&error=resource_update");
+        exit();
+    } elseif ($action === 'update_resource_full') {
+        $zoneId = (int)($_POST['zone'] ?? 0);
+        $resourceId = (int)($_POST['id_ressources'] ?? 0);
+        $title = trim((string)($_POST['titre'] ?? ''));
+        $author = trim((string)($_POST['auteur'] ?? ''));
+        $category = trim((string)($_POST['categorie'] ?? ''));
+        $cote = trim((string)($_POST['cote'] ?? ''));
+        $isbn = preg_replace('/[-\s]/', '', (string)($_POST['isbn'] ?? ''));
+        $blocId = (int)($_POST['id_bloc'] ?? 0);
+        $image = trim((string)($_POST['image'] ?? ''));
+
+        if ($zoneId > 0 && $resourceId > 0 && $title !== '' && $blocId > 0) {
+            try {
+                $stmt = $pdo->prepare("
+                    UPDATE livre l
+                    INNER JOIN bloc b_livre ON b_livre.id = l.id_bloc
+                    INNER JOIN bloc b_zone ON b_zone.id_zone = b_livre.id_zone
+                    SET l.titre = ?,
+                        l.auteur = ?,
+                        l.categorie = ?,
+                        l.cote = ?,
+                        l.isbn = ?,
+                        l.id_bloc = ?,
+                        l.image = ?
+                    WHERE l.id = ? AND b_zone.genre = ?
+                ");
+                $stmt->execute([
+                    $title,
+                    $author !== '' ? $author : null,
+                    $category !== '' ? $category : null,
+                    $cote !== '' ? $cote : null,
+                    $isbn !== '' ? $isbn : null,
+                    $blocId,
+                    $image !== '' ? $image : null,
+                    $resourceId,
+                    $zoneId,
+                ]);
 
                 header("Location: cdi.php?zone=$zoneId&success=resource_updated");
                 exit();
@@ -105,7 +144,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $blocIdInput = (int)($_POST['id_bloc'] ?? 0);
         $title = trim($_POST['titre'] ?? '');
         $author = trim($_POST['auteur'] ?? '');
+        $category = trim($_POST['categorie'] ?? '');
+        $image = trim($_POST['image'] ?? '');
         $cote = trim($_POST['cote'] ?? '');
+        $isbn = preg_replace('/[-\s]/', '', (string)($_POST['isbn'] ?? ''));
 
         if ($zoneId > 0 && $moduleId > 0 && $blocIdInput > 0 && $title !== '' && $author !== '' && $cote !== '') {
             try {
@@ -122,12 +164,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $nextBookId = 1;
                 }
 
-                $insertStmt = $pdo->prepare('INSERT INTO livre (id, titre, auteur, cote, etat, id_bloc) VALUES (?, ?, ?, ?, 1, ?)');
+                $insertStmt = $pdo->prepare('
+                    INSERT INTO livre (id, titre, auteur, categorie, image, cote, isbn, etat, id_bloc)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?)
+                ');
                 $insertStmt->execute([
                     $nextBookId,
                     $title,
                     $author,
+                    $category !== '' ? $category : null,
+                    $image !== '' ? $image : null,
                     $cote,
+                    $isbn !== '' ? $isbn : null,
                     (int)$blocId,
                 ]);
 
@@ -150,8 +198,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt = $pdo->prepare("
                     DELETE l
                     FROM livre l
-                    INNER JOIN bloc b ON b.id = l.id_bloc
-                    WHERE l.id = ? AND b.genre = ?
+                    INNER JOIN bloc b_livre ON b_livre.id = l.id_bloc
+                    INNER JOIN bloc b_zone ON b_zone.id_zone = b_livre.id_zone
+                    WHERE l.id = ? AND b_zone.genre = ?
                 ");
                 $stmt->execute([$resourceId, $zoneId]);
 
@@ -269,16 +318,18 @@ try {
 
     if (!empty($zoneModuleIds)) {
         $modulePlaceholders = implode(',', array_fill(0, count($zoneModuleIds), '?'));
+        $currentZoneName = trim((string)($zoneInfo['nom_zone'] ?? ''));
         $stmtResByModule = $pdo->prepare("
-            SELECT z.id AS id_module, l.id, l.titre
+            SELECT z.id AS id_module, l.id, l.titre, l.auteur, l.categorie, l.cote, l.isbn, l.image, l.id_bloc
             FROM livre l
             INNER JOIN bloc b ON b.id = l.id_bloc
             INNER JOIN zone z ON z.id = b.id_zone
-            WHERE z.id IN ($modulePlaceholders) AND b.genre = ?
+            WHERE z.id IN ($modulePlaceholders)
+              AND UPPER(TRIM(COALESCE(l.categorie, ''))) = UPPER(TRIM(?))
             ORDER BY z.id ASC, l.titre ASC
         ");
         $executeParams = $zoneModuleIds;
-        $executeParams[] = (string)$currentZoneId;
+        $executeParams[] = $currentZoneName;
         $stmtResByModule->execute($executeParams);
         $moduleResourcesRows = $stmtResByModule->fetchAll(PDO::FETCH_ASSOC);
 
@@ -296,6 +347,12 @@ try {
             $resourcesByModule[$moduleKey][] = [
                 'id' => isset($moduleResource['id']) ? (int)$moduleResource['id'] : 0,
                 'titre' => $title !== '' ? $title : '--',
+                'auteur' => trim((string)($moduleResource['auteur'] ?? '')),
+                'categorie' => trim((string)($moduleResource['categorie'] ?? '')),
+                'cote' => trim((string)($moduleResource['cote'] ?? '')),
+                'isbn' => trim((string)($moduleResource['isbn'] ?? '')),
+                'image' => trim((string)($moduleResource['image'] ?? '')),
+                'id_bloc' => isset($moduleResource['id_bloc']) ? (int)$moduleResource['id_bloc'] : 0,
             ];
         }
     }
@@ -352,6 +409,68 @@ $styleVersion = (string)(@filemtime(__DIR__ . '/style.css') ?: '1');
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="style.css?v=<?php echo urlencode($styleVersion); ?>" />
+    <style>
+        .book-modal-layout {
+            display: flex;
+            gap: 24px;
+            margin-top: 16px;
+        }
+        .book-modal-preview {
+            flex: 1;
+            background: #f7f7f7;
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid #e3e3e3;
+            align-self: flex-start;
+        }
+        .book-modal-preview img {
+            width: 130px;
+            max-width: 100%;
+            border-radius: 8px;
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.14);
+            margin-bottom: 14px;
+            background: #ececec;
+        }
+        .preview-details p {
+            margin: 6px 0;
+            font-size: 0.95rem;
+        }
+        .book-modal-form-side {
+            flex: 1.45;
+        }
+        .isbn-quick-search-box {
+            background: #eef7f2;
+            border: 1px solid #cfe3d7;
+            border-radius: 10px;
+            padding: 14px;
+            margin-bottom: 18px;
+        }
+        .isbn-quick-search-row {
+            display: flex;
+            gap: 10px;
+            margin-top: 6px;
+        }
+        .isbn-quick-search-row input {
+            flex: 1;
+        }
+        .isbn-search-btn {
+            background: #1a7a3a;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            padding: 10px 14px;
+            cursor: pointer;
+            font-weight: 700;
+        }
+        .selectable-book-cell {
+            cursor: pointer;
+        }
+        @media (max-width: 768px) {
+            .book-modal-layout {
+                flex-direction: column;
+            }
+        }
+    </style>
 </head>
 <body class="dashboard-body">
     <header class="site-header">
@@ -364,9 +483,21 @@ $styleVersion = (string)(@filemtime(__DIR__ . '/style.css') ?: '1');
             </div>
 
             <ul class="nav-links">
-                <li><a href="cdi.php" class="active">Zone CDI</a></li>
-                <li><a href="esp.php">Modules ESP</a></li>
-                <li><a href="logout.php">Déconnexion</a></li>
+                <?php if ($liveRole === 1): ?>
+                    <li><a href="index.php">Accueil</a></li>
+                    <li><a href="cdi.php" class="active">Zone CDI</a></li>
+                    <li><a href="esp.php">Modules ESP</a></li>
+                    <li><a href="vehicule.php">Véhicule</a></li>
+                    <li><a href="radio.php">Salle radio</a></li>
+                    <li><a href="mobile.php">Classe mobile</a></li>
+                    <li><a href="reservation_validation.php">Confirmation</a></li>
+                    <li><a href="register.php">Créer un compte</a></li>
+                    <li><a href="logout.php">Déconnexion</a></li>
+                <?php else: ?>
+                    <li><a href="cdi.php" class="active">Zone CDI</a></li>
+                    <li><a href="esp.php">Modules ESP</a></li>
+                    <li><a href="logout.php">Déconnexion</a></li>
+                <?php endif; ?>
                 <li class="admin-pill"><?php echo htmlspecialchars((string)($_SESSION['login'] ?? 'Compte')); ?></li>
             </ul>
         </nav>
@@ -482,7 +613,19 @@ $styleVersion = (string)(@filemtime(__DIR__ . '/style.css') ?: '1');
                                                         <tr>
                                                             <?php for ($col = 0; $col < $titleColumns; $col++): ?>
                                                                 <?php $bookItem = $resourceRow[$col] ?? null; ?>
-                                                                <td>
+                                                                <td
+                                                                    class="<?php echo is_array($bookItem) ? 'selectable-book-cell' : ''; ?>"
+                                                                    <?php if (is_array($bookItem)): ?>
+                                                                        data-resource-id="<?php echo (int)($bookItem['id'] ?? 0); ?>"
+                                                                        data-resource-title="<?php echo htmlspecialchars((string)($bookItem['titre'] ?? ''), ENT_QUOTES); ?>"
+                                                                        data-resource-author="<?php echo htmlspecialchars((string)($bookItem['auteur'] ?? ''), ENT_QUOTES); ?>"
+                                                                        data-resource-category="<?php echo htmlspecialchars((string)($bookItem['categorie'] ?? ''), ENT_QUOTES); ?>"
+                                                                        data-resource-image="<?php echo htmlspecialchars((string)($bookItem['image'] ?? ''), ENT_QUOTES); ?>"
+                                                                        data-resource-cote="<?php echo htmlspecialchars((string)($bookItem['cote'] ?? ''), ENT_QUOTES); ?>"
+                                                                        data-resource-isbn="<?php echo htmlspecialchars((string)($bookItem['isbn'] ?? ''), ENT_QUOTES); ?>"
+                                                                        data-resource-bloc="<?php echo (int)($bookItem['id_bloc'] ?? 0); ?>"
+                                                                    <?php endif; ?>
+                                                                >
                                                                     <?php if (is_array($bookItem)): ?>
                                                                         <div class="book-cell-content">
                                                                             <span><?php echo htmlspecialchars((string)($bookItem['titre'] ?? '')); ?></span>
@@ -580,11 +723,85 @@ $styleVersion = (string)(@filemtime(__DIR__ . '/style.css') ?: '1');
         </div>
     </div>
 
+    <div class="modal-overlay" id="modalEditBook">
+        <div class="modal-card" style="max-width: 860px; width: 95%;">
+            <button class="modal-close" data-close-modal="modalEditBook">&times;</button>
+            <h2 style="text-align:center; margin-bottom: 6px;">Fiche ressource</h2>
+            <p class="modal-subtext" style="text-align:center;">Détails du livre et modification complète.</p>
+
+            <div class="book-modal-layout">
+                <div class="book-modal-preview">
+                    <img id="previewBookImage" src="" alt="Couverture" onerror="this.src='https://placehold.co/130x180?text=Pas+d%27image'">
+                    <div class="preview-details">
+                        <p><strong>Titre actuel :</strong> <span id="previewBookTitle"></span></p>
+                        <p><strong>Auteur actuel :</strong> <span id="previewBookAuthor"></span></p>
+                        <p><strong>Catégorie actuelle :</strong> <span id="previewBookCategory"></span></p>
+                        <p><strong>Cote actuelle :</strong> <span id="previewBookCote"></span></p>
+                        <p><strong>ISBN actuel :</strong> <span id="previewBookIsbn"></span></p>
+                        <p><strong>ID bloc actuel :</strong> <span id="previewBookBloc"></span></p>
+                    </div>
+                </div>
+
+                <div class="book-modal-form-side">
+                    <div class="isbn-quick-search-box">
+                        <label for="edit_isbn_search"><strong>Remplir automatiquement via ISBN</strong></label>
+                        <div class="isbn-quick-search-row">
+                            <input id="edit_isbn_search" type="text" placeholder="Ex: 9782344061343">
+                            <button type="button" id="btn_edit_search_isbn" class="isbn-search-btn">Remplir</button>
+                        </div>
+                        <small id="edit_isbn_status" style="display:block; margin-top:6px; font-weight:700; color:#666;"></small>
+                    </div>
+
+                    <form method="POST" class="zone-form" id="editBookModalForm" style="margin:0;">
+                        <input type="hidden" name="action" value="update_resource_full">
+                        <input type="hidden" name="zone" value="<?php echo (int)$currentZoneId; ?>">
+                        <input type="hidden" name="id_ressources" id="editBookIdInput" value="">
+
+                        <label for="editBookTitleInput">Titre</label>
+                        <input id="editBookTitleInput" type="text" name="titre" required>
+
+                        <label for="editBookAuthorInput">Auteur</label>
+                        <input id="editBookAuthorInput" type="text" name="auteur">
+
+                        <label for="editBookCategoryInput">Catégorie / Genre</label>
+                        <input id="editBookCategoryInput" type="text" name="categorie">
+
+                        <label for="editBookCoteInput">Cote</label>
+                        <input id="editBookCoteInput" type="text" name="cote">
+
+                        <label for="editBookIsbnInput">ISBN</label>
+                        <input id="editBookIsbnInput" type="text" name="isbn">
+
+                        <label for="editBookBlocInput">ID bloc rattaché</label>
+                        <input id="editBookBlocInput" type="number" min="1" name="id_bloc" required>
+
+                        <label for="editBookImageInput">URL de la couverture</label>
+                        <input id="editBookImageInput" type="text" name="image">
+
+                        <div class="modal-actions" style="margin-top:20px;">
+                            <button type="button" class="btn-modal-secondary" data-close-modal="modalEditBook">Annuler</button>
+                            <button type="submit" class="btn-modal-danger">Enregistrer</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="modal-overlay" id="modalAddBook">
         <div class="modal-card">
             <button class="modal-close" data-close-modal="modalAddBook">&times;</button>
             <h2 style="text-align:center;">Ajouter un livre</h2>
-            <p class="modal-subtext" id="addBookModalText">Ajout manuel dans ce module.</p>
+            <p class="modal-subtext" id="addBookModalText">Remplissage automatique par ISBN ou saisie manuelle.</p>
+
+            <div class="isbn-quick-search-box">
+                <label for="isbn_search"><strong>Remplissage automatique via ISBN</strong></label>
+                <div class="isbn-quick-search-row">
+                    <input id="isbn_search" type="text" placeholder="Ex: 9782070415793">
+                    <button type="button" id="btn_search_isbn" class="isbn-search-btn">Rechercher</button>
+                </div>
+                <small id="isbn_status" style="display:block; margin-top:6px; font-weight:700; color:#666;"></small>
+            </div>
 
             <form method="POST" class="zone-form">
                 <input type="hidden" name="action" value="add_resource_manual">
@@ -601,8 +818,17 @@ $styleVersion = (string)(@filemtime(__DIR__ . '/style.css') ?: '1');
                 <label for="addBookAuthorInput">Auteur</label>
                 <input id="addBookAuthorInput" type="text" name="auteur" required placeholder="Ex: Victor Hugo">
 
+                <label for="addBookCategorieInput">Catégorie / Genre</label>
+                <input id="addBookCategorieInput" type="text" name="categorie" placeholder="Ex: Roman">
+
+                <label for="addBookImageInput">Lien de la couverture</label>
+                <input id="addBookImageInput" type="text" name="image" placeholder="https://...">
+
                 <label for="addBookCoteInput">Cote</label>
                 <input id="addBookCoteInput" type="text" name="cote" required placeholder="Ex: 840 HUG">
+
+                <label for="addBookIsbnInput">ISBN</label>
+                <input id="addBookIsbnInput" type="text" name="isbn" placeholder="Ex: 9782070415793">
 
                 <div class="modal-actions">
                     <button type="button" class="btn-modal-secondary" data-close-modal="modalAddBook">Annuler</button>
@@ -620,6 +846,7 @@ $styleVersion = (string)(@filemtime(__DIR__ . '/style.css') ?: '1');
     <script>
         const modal = document.getElementById('modalZone');
         const modalEdit = document.getElementById('modalEdit');
+        const modalEditBook = document.getElementById('modalEditBook');
         const modalDelete = document.getElementById('modalDelete');
         const modalAddBook = document.getElementById('modalAddBook');
         const openBtn = document.getElementById('openZoneModal');
@@ -643,6 +870,9 @@ $styleVersion = (string)(@filemtime(__DIR__ . '/style.css') ?: '1');
             }
             if (event.target === modalEdit) {
                 modalEdit.classList.remove('active');
+            }
+            if (event.target === modalEditBook) {
+                modalEditBook.classList.remove('active');
             }
             if (event.target === modalDelete) {
                 modalDelete.classList.remove('active');
@@ -711,25 +941,6 @@ $styleVersion = (string)(@filemtime(__DIR__ . '/style.css') ?: '1');
             });
         }
 
-        const resourceButtons = document.querySelectorAll('.edit-resource-btn');
-
-        if (resourceButtons.length > 0) {
-            resourceButtons.forEach((button) => {
-                button.addEventListener('click', () => {
-                    const resourceId = button.dataset.resourceId || '';
-                    const currentTitle = button.dataset.resourceTitle || '';
-                    openEditModal({
-                        action: 'update_resource_title',
-                        title: 'Modifier le livre',
-                        label: 'Nouveau titre du livre',
-                        value: currentTitle,
-                        zoneId: '',
-                        resourceId: resourceId
-                    });
-                });
-            });
-        }
-
         if (editModalForm) {
             editModalForm.addEventListener('submit', (event) => {
                 const value = editModalValue.value.trim();
@@ -779,6 +990,11 @@ $styleVersion = (string)(@filemtime(__DIR__ . '/style.css') ?: '1');
         const addBookBlocIdInput = document.getElementById('addBookBlocIdInput');
         const addBookBlocHelp = document.getElementById('addBookBlocHelp');
         const addBookTitleInput = document.getElementById('addBookTitleInput');
+        const addBookAuthorInput = document.getElementById('addBookAuthorInput');
+        const addBookCategorieInput = document.getElementById('addBookCategorieInput');
+        const addBookImageInput = document.getElementById('addBookImageInput');
+        const addBookCoteInput = document.getElementById('addBookCoteInput');
+        const addBookIsbnInput = document.getElementById('addBookIsbnInput');
 
         document.querySelectorAll('.open-add-book-modal').forEach((button) => {
             button.addEventListener('click', () => {
@@ -802,6 +1018,21 @@ $styleVersion = (string)(@filemtime(__DIR__ . '/style.css') ?: '1');
                 }
                 if (addBookTitleInput) {
                     addBookTitleInput.value = '';
+                }
+                if (addBookAuthorInput) {
+                    addBookAuthorInput.value = '';
+                }
+                if (addBookCategorieInput) {
+                    addBookCategorieInput.value = '';
+                }
+                if (addBookImageInput) {
+                    addBookImageInput.value = '';
+                }
+                if (addBookCoteInput) {
+                    addBookCoteInput.value = '';
+                }
+                if (addBookIsbnInput) {
+                    addBookIsbnInput.value = '';
                 }
                 if (modalAddBook) {
                     modalAddBook.classList.add('active');
@@ -827,6 +1058,151 @@ $styleVersion = (string)(@filemtime(__DIR__ . '/style.css') ?: '1');
             });
         });
 
+        document.querySelectorAll('.selectable-book-cell').forEach((cell) => {
+            cell.addEventListener('click', (event) => {
+                if (event.target.closest('.book-delete-btn')) {
+                    return;
+                }
+
+                const resourceId = cell.dataset.resourceId || '';
+                if (resourceId === '') {
+                    return;
+                }
+
+                const title = cell.dataset.resourceTitle || '';
+                const author = cell.dataset.resourceAuthor || '';
+                const category = cell.dataset.resourceCategory || '';
+                const image = cell.dataset.resourceImage || '';
+                const cote = cell.dataset.resourceCote || '';
+                const isbn = cell.dataset.resourceIsbn || '';
+                const bloc = cell.dataset.resourceBloc || '';
+
+                document.getElementById('previewBookTitle').textContent = title.trim() !== '' ? title : 'Non renseigné';
+                document.getElementById('previewBookAuthor').textContent = author.trim() !== '' ? author : 'Non renseigné';
+                document.getElementById('previewBookCategory').textContent = category.trim() !== '' ? category : 'Non renseigné';
+                document.getElementById('previewBookCote').textContent = cote.trim() !== '' ? cote : 'Non renseigné';
+                document.getElementById('previewBookIsbn').textContent = isbn.trim() !== '' ? isbn : 'Non renseigné';
+                document.getElementById('previewBookBloc').textContent = bloc.trim() !== '' ? bloc : 'Non renseigné';
+                document.getElementById('previewBookImage').src = image.trim() !== '' ? image : 'https://placehold.co/130x180?text=Pas+d%27image';
+
+                document.getElementById('editBookIdInput').value = resourceId;
+                document.getElementById('editBookTitleInput').value = title;
+                document.getElementById('editBookAuthorInput').value = author;
+                document.getElementById('editBookCategoryInput').value = category;
+                document.getElementById('editBookCoteInput').value = cote;
+                document.getElementById('editBookIsbnInput').value = isbn;
+                document.getElementById('editBookBlocInput').value = bloc;
+                document.getElementById('editBookImageInput').value = image;
+                document.getElementById('edit_isbn_search').value = isbn;
+                document.getElementById('edit_isbn_status').textContent = '';
+
+                if (modalEditBook) {
+                    modalEditBook.classList.add('active');
+                }
+            });
+        });
+
+    </script>
+    <script>
+        const authorTranslations = {
+            '尾田栄一郎': 'Eiichiro Oda',
+            '尾田 栄一郎': 'Eiichiro Oda',
+            '岸本斉史': 'Masashi Kishimoto',
+            '久保帯人': 'Tite Kubo',
+            '堀越耕平': 'Kohei Horikoshi',
+            '鳥山明': 'Akira Toriyama'
+        };
+
+        function fetchBookDetails(isbn, successCallback, errorCallback) {
+            const cleanIsbn = isbn.trim().replace(/[-\s]/g, '');
+            if (cleanIsbn.length < 10) {
+                errorCallback('Code ISBN non valide.');
+                return;
+            }
+
+            const url = `https://openlibrary.org/api/books?bibkeys=ISBN:${cleanIsbn}&jscmd=data&format=json`;
+            fetch(url)
+                .then((response) => response.json())
+                .then((data) => {
+                    const key = `ISBN:${cleanIsbn}`;
+                    if (!data || !data[key]) {
+                        errorCallback('Aucun livre trouvé avec cet ISBN.');
+                        return;
+                    }
+
+                    const info = data[key];
+                    const title = info.title || 'Livre inconnu';
+                    let authors = 'Auteur inconnu';
+                    const image = info.cover ? (info.cover.large || info.cover.medium || '') : '';
+                    let category = 'Roman';
+
+                    if (Array.isArray(info.authors) && info.authors.length > 0) {
+                        authors = info.authors
+                            .map((authorItem) => authorTranslations[authorItem.name.trim()] || authorItem.name.trim())
+                            .join(', ');
+                    }
+
+                    if (Array.isArray(info.subjects) && info.subjects.length > 0) {
+                        const subject = String(info.subjects[0].name || '').toLowerCase();
+                        if (subject.includes('manga')) {
+                            category = 'Manga';
+                        } else if (subject.includes('comic') || subject.includes('bd') || subject.includes('graphic')) {
+                            category = 'Bande Dessinee';
+                        }
+                    }
+
+                    successCallback({ title, authors, image, category, cleanIsbn });
+                })
+                .catch(() => {
+                    errorCallback('Erreur de connexion au service ISBN.');
+                });
+        }
+
+        const editSearchButton = document.getElementById('btn_edit_search_isbn');
+        if (editSearchButton) {
+            editSearchButton.addEventListener('click', () => {
+                const isbnInput = document.getElementById('edit_isbn_search').value;
+                const status = document.getElementById('edit_isbn_status');
+                status.style.color = 'orange';
+                status.textContent = 'Recuperation des donnees...';
+
+                fetchBookDetails(isbnInput, (book) => {
+                    document.getElementById('editBookTitleInput').value = book.title;
+                    document.getElementById('editBookAuthorInput').value = book.authors;
+                    document.getElementById('editBookCategoryInput').value = book.category;
+                    document.getElementById('editBookImageInput').value = book.image;
+                    document.getElementById('editBookIsbnInput').value = book.cleanIsbn;
+                    status.style.color = 'green';
+                    status.textContent = 'Donnees recuperees.';
+                }, (errorMessage) => {
+                    status.style.color = 'red';
+                    status.textContent = errorMessage;
+                });
+            });
+        }
+
+        const addSearchButton = document.getElementById('btn_search_isbn');
+        if (addSearchButton) {
+            addSearchButton.addEventListener('click', () => {
+                const isbnInput = document.getElementById('isbn_search').value;
+                const status = document.getElementById('isbn_status');
+                status.style.color = 'orange';
+                status.textContent = 'Recherche en cours...';
+
+                fetchBookDetails(isbnInput, (book) => {
+                    document.getElementById('addBookTitleInput').value = book.title;
+                    document.getElementById('addBookAuthorInput').value = book.authors;
+                    document.getElementById('addBookCategorieInput').value = book.category;
+                    document.getElementById('addBookImageInput').value = book.image;
+                    document.getElementById('addBookIsbnInput').value = book.cleanIsbn;
+                    status.style.color = 'green';
+                    status.textContent = 'Livre trouve. Ajoute maintenant la cote.';
+                }, (errorMessage) => {
+                    status.style.color = 'red';
+                    status.textContent = errorMessage;
+                });
+            });
+        }
     </script>
 </body>
 </html>

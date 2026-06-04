@@ -1,16 +1,11 @@
-﻿<?php
+<?php
+header('Content-Type: text/html; charset=UTF-8');
 session_start();
+require_once 'db.php';
+require_once __DIR__ . '/src/auth_session.php';
 
-if (!isset($_SESSION['id_user'])) {
-    header('Location: login.php');
-    exit();
-}
-
-$role = isset($_SESSION['role']) ? (int)$_SESSION['role'] : -1;
-if ($role !== 1) {
-    header('Location: index.php');
-    exit();
-}
+$sessionUser = requireAuthenticatedSessionUser($pdo, [1], 'index.php');
+$role = (int)$sessionUser['role'];
 
 $error = $_GET['error'] ?? '';
 $created = isset($_GET['created']) && $_GET['created'] === '1';
@@ -27,30 +22,23 @@ $styleVersion = (string)(@filemtime(__DIR__ . '/style.css') ?: '1');
 </head>
 <body>
 
-    <header class="site-header">
-        <nav class="navbar">
-            <div class="logo-lycee">
-                <a href="index.php">
-                    <span class="logo-mark">CDI</span>
-                    CDI <span class="logo-separator">-</span> Lycée
-                </a>
+<main class="login-container">
+    <form class="login-card" action="create_account.php" method="post">
+        <div class="login-card-header">
+            <span class="logo-mark">CDI</span>
+            <div class="login-card-header-text">
+                <span class="login-card-header-title">Espace Administration</span>
+                <span class="login-card-header-sub">CDI — Lycée</span>
             </div>
+        </div>
 
-            <ul class="nav-links">
-                <li><a href="index.php">Accueil</a></li>
-                <li><a href="register.php" class="active">Créer un compte</a></li>
-                <li><a href="logout.php">Déconnexion</a></li>
-                <li class="admin-pill"><?php echo htmlspecialchars((string)($_SESSION['login'] ?? 'Compte')); ?></li>
-            </ul>
-        </nav>
-    </header>
-
-    <main class="login-container">
-        <form class="login-card" action="create_account.php" method="post">
+        <div class="login-card-body">
             <a href="index.php" class="back-link">&larr; Retour à l'accueil</a>
 
-            <h2>Création de compte</h2>
-            <p class="login-subtitle">Création réservée au super admin</p>
+            <div>
+                <h2>Création de compte</h2>
+                <p class="login-subtitle">Création réservée au super admin</p>
+            </div>
 
             <?php if ($created): ?>
                 <p class="form-feedback success">Compte créé avec succès.</p>
@@ -70,7 +58,7 @@ $styleVersion = (string)(@filemtime(__DIR__ . '/style.css') ?: '1');
 
             <div class="input-group">
                 <label for="username">Nom d'utilisateur</label>
-                <input type="text" id="username" name="username" placeholder="Choisissez un identifiant" required>
+                <input type="text" id="username" name="username" placeholder="Entrez votre identifiant" required>
             </div>
 
             <div class="input-group">
@@ -94,8 +82,9 @@ $styleVersion = (string)(@filemtime(__DIR__ . '/style.css') ?: '1');
             </div>
 
             <button type="submit" class="btn-submit">Créer le compte</button>
-        </form>
-    </main>
+        </div>
+    </form>
+</main>
 
 </body>
 </html>

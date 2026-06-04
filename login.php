@@ -1,24 +1,16 @@
-﻿<?php
+<?php
+header('Content-Type: text/html; charset=UTF-8');
 session_start();
-if (isset($_SESSION['id_user'])) {
-    $role = isset($_SESSION['role']) ? (int)$_SESSION['role'] : -1;
-    if ($role === 2) {
-        header("Location: cdi.php");
-        exit();
-    }
+require_once 'db.php';
+require_once __DIR__ . '/src/auth_session.php';
 
-    if ($role === 3) {
-        header("Location: vehicule.php");
-        exit();
-    }
-
-    if (in_array($role, [1, 4], true)) {
-        header("Location: index.php");
-        exit();
-    }
-
-    session_unset();
-    session_destroy();
+$sessionUser = getAuthenticatedSessionUser($pdo);
+if ($sessionUser !== null) {
+    $role = (int)$sessionUser['role'];
+    if ($role === 2) { header("Location: cdi.php"); exit(); }
+    if ($role === 3) { header("Location: vehicule.php"); exit(); }
+    if (in_array($role, [1, 4], true)) { header("Location: index.php"); exit(); }
+    destroyCurrentSession();
 }
 $error = $_GET['error'] ?? '';
 $styleVersion = (string)(@filemtime(__DIR__ . '/style.css') ?: '1');
@@ -28,54 +20,52 @@ $styleVersion = (string)(@filemtime(__DIR__ . '/style.css') ?: '1');
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Connexion espace CDI</title>
+    <title>Connexion — CDI Lycée</title>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css?v=<?php echo urlencode($styleVersion); ?>" />
 </head>
 <body>
 
-    <header class="site-header">
-        <nav class="navbar">
-            <div class="logo-lycee">
-                <a href="index.php">
-                    <span class="logo-mark">CDI</span>
-                    CDI <span class="logo-separator">-</span> Lycée
-                </a>
-            </div>
-
-            <ul class="nav-links">
-                <li><a href="index.php">Accueil</a></li>
-            </ul>
-        </nav>
-    </header>
-
     <main class="login-container">
         <form class="login-card" action="auth.php" method="post">
-            <a href="index.php" class="back-link">&larr; Retour à l'accueil</a>
 
-            <h2>Connexion à l'espace administration</h2>
-            <p class="login-subtitle">Veuillez saisir vos identifiants</p>
-
-            <?php if ($error === 'invalid'): ?>
-                <p style="color:red; text-align:center;">Identifiants incorrects.</p>
-            <?php elseif ($error === 'db'): ?>
-                <p style="color:red; text-align:center;">Erreur de base de données. Merci de vous reconnecter.</p>
-            <?php endif; ?>
-
-            <div class="input-group">
-                <label for="username">Nom d'utilisateur</label>
-                <input type="text" id="username" name="username" placeholder="Entrez votre identifiant" required>
+            <div class="login-card-header">
+                <span class="logo-mark">CDI</span>
+                <div class="login-card-header-text">
+                    <span class="login-card-header-title">Espace Administration</span>
+                    <span class="login-card-header-sub">CDI — Lycée</span>
+                </div>
             </div>
 
-            <div class="input-group">
-                <label for="password">Mot de passe</label>
-                <input type="password" id="password" name="password" placeholder="Entrez votre mot de passe" required>
+            <div class="login-card-body">
+                <a href="index.php" class="back-link">&larr; Retour à l'accueil</a>
+
+                <div>
+                    <h2>Connexion</h2>
+                    <p class="login-subtitle">Veuillez saisir vos identifiants</p>
+                </div>
+
+                <?php if ($error === 'invalid'): ?>
+                    <p class="form-feedback error">Identifiants incorrects.</p>
+                <?php elseif ($error === 'db'): ?>
+                    <p class="form-feedback error">Erreur de base de données. Merci de réessayer.</p>
+                <?php endif; ?>
+
+                <div class="input-group">
+                    <label for="username">Nom d'utilisateur</label>
+                    <input type="text" id="username" name="username" placeholder="Entrez votre identifiant" required autocomplete="username">
+                </div>
+
+                <div class="input-group">
+                    <label for="password">Mot de passe</label>
+                    <input type="password" id="password" name="password" placeholder="••••••••" required autocomplete="current-password">
+                </div>
+
+                <button type="submit" class="btn-submit">Se connecter</button>
             </div>
 
-            <button type="submit" class="btn-submit">Connexion</button>
         </form>
     </main>
 
 </body>
 </html>
-

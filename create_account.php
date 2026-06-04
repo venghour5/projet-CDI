@@ -1,11 +1,9 @@
 ﻿<?php
 session_start();
 require_once 'db.php';
+require_once __DIR__ . '/src/auth_session.php';
 
-if (!isset($_SESSION['id_user']) || (int)($_SESSION['role'] ?? -1) !== 1) {
-    header('Location: login.php?error=forbidden');
-    exit();
-}
+requireAuthenticatedSessionUser($pdo, [1], 'login.php?error=forbidden');
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     header('Location: register.php');

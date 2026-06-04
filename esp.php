@@ -1,24 +1,14 @@
 <?php
 declare(strict_types=1);
+header('Content-Type: text/html; charset=UTF-8');
 
 session_start();
 require_once 'db.php';
 require_once __DIR__ . '/src/module_supervision.php';
+require_once __DIR__ . '/src/auth_session.php';
 
-if (!isset($_SESSION['id_user'])) {
-    header('Location: login.php');
-    exit();
-}
-
-$roleStmt = $pdo->prepare('SELECT role FROM utilisateur WHERE id = ? LIMIT 1');
-$roleStmt->execute([(int)$_SESSION['id_user']]);
-$liveRole = (int)($roleStmt->fetchColumn() ?: -1);
-$_SESSION['role'] = $liveRole;
-
-if (!in_array($liveRole, [1, 2], true)) {
-    header('Location: vehicule.php');
-    exit();
-}
+$sessionUser = requireAuthenticatedSessionUser($pdo, [1, 2], 'vehicule.php');
+$liveRole = (int)$sessionUser['role'];
 
 $canAddModule = ($liveRole === 1);
 
@@ -40,16 +30,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $ipAddress = trim((string)($_POST['ip_address'] ?? ''));
             $moduleName = trim((string)($_POST['module_name'] ?? ''));
-            $heartbeatInput = (string)($_POST['heartbeat_interval_sec'] ?? '60');
-
-            $heartbeatInterval = is_numeric($heartbeatInput) ? (int)$heartbeatInput : 60;
-
             registerOrUpdateModule(
                 $pdo,
                 null,
                 $ipAddress,
                 $moduleName !== '' ? $moduleName : null,
-                $heartbeatInterval,
                 null
             );
 
@@ -57,16 +42,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit();
         }
 
+        if ($action === 'remove_zone') {
+            $moduleId = (int)($_POST['module_id'] ?? 0);
+            $zoneId   = (int)($_POST['zone_id'] ?? 0);
+            if ($moduleId < 0 || $zoneId <= 0) {
+                throw new InvalidArgumentException('Paramètres invalides');
+            }
+            removeModuleZone($pdo, $moduleId, $zoneId);
+            header('Location: esp.php?success=zone_removed');
+            exit();
+        }
+
         if ($action === 'assign_module_zone') {
             $moduleId = (int)($_POST['module_id'] ?? 0);
-            $zoneId = (int)($_POST['zone_id'] ?? 0);
+            $zoneIds = [];
+            if (isset($_POST['zone_ids']) && is_array($_POST['zone_ids'])) {
+                foreach ($_POST['zone_ids'] as $rawZoneId) {
+                    $zoneId = (int)$rawZoneId;
+                    if ($zoneId > 0) {
+                        $zoneIds[] = $zoneId;
+                    }
+                }
+            } else {
+                $zoneId = (int)($_POST['zone_id'] ?? 0);
+                if ($zoneId > 0) {
+                    $zoneIds[] = $zoneId;
+                }
+            }
+            $zoneIds = array_values(array_unique($zoneIds));
 
-            if ($moduleId <= 0 || $zoneId <= 0) {
+            if ($moduleId < 0 || empty($zoneIds)) {
                 throw new InvalidArgumentException('Paramètres invalides');
             }
 
-            assignModuleToZone($pdo, $moduleId, $zoneId);
-            logModuleActivity($pdo, $moduleId, 'Association zone ' . $zoneId, null, true);
+            foreach ($zoneIds as $zoneId) {
+                assignModuleToZone($pdo, $moduleId, $zoneId);
+                logModuleActivity($pdo, $moduleId, 'Association zone ' . $zoneId, null, true);
+            }
 
             header('Location: esp.php?success=module_assigned');
             exit();
@@ -74,7 +86,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($action === 'disconnect_module') {
             $moduleId = (int)($_POST['module_id'] ?? 0);
-            if ($moduleId <= 0) {
+            if ($moduleId < 0) {
                 throw new InvalidArgumentException('Module invalide');
             }
 
@@ -85,20 +97,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit();
         }
 
-        if ($action === 'mark_unreachable') {
+        if ($action === 'delete_module') {
+            if (!$canAddModule) {
+                throw new RuntimeException('forbidden_delete_module');
+            }
+
             $moduleId = (int)($_POST['module_id'] ?? 0);
             if ($moduleId <= 0) {
                 throw new InvalidArgumentException('Module invalide');
             }
 
-            logModuleActivity($pdo, $moduleId, 'Ping admin: module non joignable', null, false);
-            syncModuleHealthAlerts($pdo, OFFLINE_DELAY_SECONDS);
+            deleteModule($pdo, $moduleId);
 
-            header('Location: esp.php?success=module_flagged_unreachable');
+            header('Location: esp.php?success=module_deleted');
             exit();
         }
+
     } catch (Throwable $e) {
-        header('Location: esp.php?error=' . urlencode($action !== '' ? $action : 'unknown'));
+        $errorCode = $action !== '' ? $action : 'unknown';
+        if ($e instanceof RuntimeException && $e->getMessage() !== '') {
+            $errorCode = $e->getMessage();
+        }
+        header('Location: esp.php?error=' . urlencode($errorCode));
         exit();
     }
 }
@@ -129,15 +149,19 @@ if (isset($_GET['success'])) {
         $feedbackMessage = 'Module associé à la zone.';
     } elseif ($successCode === 'module_disconnected') {
         $feedbackMessage = 'Module déconnecté de la zone.';
-    } elseif ($successCode === 'module_flagged_unreachable') {
-        $feedbackMessage = 'État non joignable enregistré pour le module.';
+    } elseif ($successCode === 'module_deleted') {
+        $feedbackMessage = 'Module supprimé avec succès.';
+    } elseif ($successCode === 'zone_removed') {
+        $feedbackMessage = 'Zone retirée du module.';
     }
 }
 
 if ($feedbackMessage === '' && isset($_GET['error'])) {
     $feedbackType = 'error';
-    if ((string)$_GET['error'] === 'add_module') {
-        $feedbackMessage = 'Seul le Super Admin peut ajouter un module.';
+    if ((string)$_GET['error'] === 'add_module' || (string)$_GET['error'] === 'delete_module') {
+        $feedbackMessage = 'Seul le Super Admin peut gérer les modules.';
+    } elseif ((string)$_GET['error'] === 'forbidden_delete_module') {
+        $feedbackMessage = 'Seul le Super Admin peut supprimer un module.';
     } else {
         $feedbackMessage = 'Opération impossible. Vérifie les données saisies.';
     }
@@ -183,220 +207,159 @@ function formatSecondsAgo(?int $seconds): string
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Gestion CDI - Modules ESP</title>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="style.css?v=<?php echo urlencode($styleVersion); ?>" />
     <style>
+        /* — Overrides taille texte cartes — */
+        .module-title { font-size: 17px !important; font-weight: 700 !important; margin-bottom: 3px !important; }
+        .module-zone  { font-size: 13px !important; color: #555 !important; font-weight: 500 !important; }
+
+        /* — Cartes modules — */
+        .esp-card {
+            gap: 12px !important;
+            min-height: 0 !important;
+            padding: 18px 20px !important;
+            background: #d9d9d9 !important;
+            border-radius: 14px !important;
+            border-top: 3px solid #88c6d6 !important;
+        }
+        .esp-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.10) !important; }
+
+        /* — Carte Ajouter — */
+        .esp-add-card {
+            flex-direction: column !important;
+            min-height: 0 !important;
+            padding: 28px 20px !important;
+            background: transparent !important;
+            border: 2px dashed #88c6d6 !important;
+            border-radius: 14px !important;
+            color: #555;
+            gap: 6px !important;
+        }
+        .esp-add-card:hover { background: rgba(136,198,214,0.08) !important; }
+        .big-plus-btn { font-size: 36px !important; color: #88c6d6 !important; }
+
+        /* — Résumé haut de page — */
         .esp-top-summary {
             display: grid;
             grid-template-columns: repeat(4, minmax(0, 1fr));
             gap: 12px;
-            margin-bottom: 20px;
+            margin-bottom: 24px;
         }
-
         .summary-chip {
             background: #d9d9d9;
-            border-radius: 14px;
-            padding: 12px;
-            font-weight: 700;
-            border: 1px solid #9e9e9e;
+            border-radius: 12px;
+            padding: 16px 14px 12px;
             text-align: center;
+            border-top: 3px solid #88c6d6;
         }
+        .summary-chip .value { display: block; font-size: 30px; font-weight: 800; margin-bottom: 4px; }
+        .summary-chip .chip-label { font-size: 11px; font-weight: 600; color: #555; text-transform: uppercase; letter-spacing: 0.4px; }
 
-        .summary-chip .value {
-            display: block;
-            font-size: 26px;
-            margin-bottom: 4px;
-        }
-
+        /* — Feedback — */
         .esp-feedback {
-            padding: 15px;
-            border-radius: 15px;
+            padding: 12px 16px;
+            border-radius: 10px;
             margin-bottom: 20px;
-            font-weight: 700;
-        }
-
-        .esp-feedback.success { background: #89ff57; }
-        .esp-feedback.error { background: #ff8989; }
-
-        .module-meta {
+            font-weight: 600;
             font-size: 14px;
-            line-height: 1.35;
-            color: #1d1d1d;
-            margin-top: 10px;
         }
+        .esp-feedback.success { background: #d4f5c1; color: #1a5c00; border-left: 3px solid #89ff57; }
+        .esp-feedback.error   { background: #ffd7d7; color: #7c0000; border-left: 3px solid #ff4444; }
 
+        /* — Statut connexion — */
+        .status-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
         .connection-pill {
             border-radius: 999px;
-            padding: 7px 12px;
-            font-size: 14px;
+            padding: 4px 12px;
+            font-size: 12px;
             font-weight: 700;
             display: inline-flex;
             align-items: center;
-            gap: 8px;
+            gap: 6px;
         }
+        .connection-pill.online  { background: #89ff57; color: #000; }
+        .connection-pill.offline { background: #ff4444; color: #fff; }
+        .signal-label { font-size: 12px; font-weight: 600; color: #555; }
 
-        .connection-pill.online {
-            background: #88ef3e;
-            color: #000;
+        /* — Meta infos — */
+        .module-meta {
+            font-size: 13px;
+            line-height: 1.6;
+            color: #333;
+            background: rgba(255,255,255,0.45);
+            border-radius: 8px;
+            padding: 8px 10px;
         }
-
-        .connection-pill.offline {
-            background: #ff4f4f;
-            color: #fff;
-        }
-
-        .status-row {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 8px;
-            margin-bottom: 8px;
-        }
-
         .activity-label {
             display: inline-block;
-            font-size: 14px;
-            font-weight: 700;
-            color: #111;
-            background: #ececec;
-            border-radius: 10px;
-            padding: 6px 10px;
-            margin-top: 8px;
-        }
-
-        .alert-list {
-            list-style: none;
-            margin-top: 12px;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-
-        .alert-item {
-            font-size: 13px;
+            font-size: 12px;
             font-weight: 600;
-            border-radius: 10px;
-            padding: 8px 10px;
-            border: 1px solid #8f8f8f;
-            background: #efefef;
+            background: rgba(255,255,255,0.6);
+            border-radius: 5px;
+            padding: 2px 7px;
         }
 
-        .alert-item.warning {
-            border-color: #cc9c00;
-            background: #fff5ce;
+        /* — Alertes — */
+        .alert-list { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+        .alert-item { font-size: 12px; font-weight: 600; border-radius: 7px; padding: 7px 10px; border-left: 3px solid #aaa; background: rgba(255,255,255,0.4); }
+        .alert-item.warning  { background: #fff8e1; border-left-color: #f0b400; color: #5a4000; }
+        .alert-item.critical { background: #ffe4e4; border-left-color: #ff4444; color: #7c0000; }
+
+        /* — Tags zones — */
+        .zone-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+        .zone-tag-form { display: inline-flex; margin: 0; }
+        .zone-tag {
+            display: inline-flex; align-items: center; gap: 4px;
+            background: rgba(136,198,214,0.28); border: 1.5px solid rgba(136,198,214,0.65);
+            border-radius: 999px; padding: 2px 9px; font-size: 11px; font-weight: 600;
+            color: #333; cursor: pointer; font-family: inherit; transition: background 0.15s, border-color 0.15s;
         }
+        .zone-tag:hover { background: rgba(255,68,68,0.15); border-color: #ff9999; color: #7c0000; }
 
-        .alert-item.critical {
-            border-color: #ce3f3f;
-            background: #ffd7d7;
-        }
-
-        .esp-modal-overlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.55);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            z-index: 2200;
-        }
-
-        .esp-modal-overlay.active { display: flex; }
-
-        .esp-modal {
-            width: min(520px, 92vw);
-            background: #d9d9d9;
-            border: 2px solid #000;
-            border-radius: 18px;
-            padding: 24px;
-            position: relative;
-        }
-
-        .esp-modal-close {
-            position: absolute;
-            right: 14px;
-            top: 8px;
-            background: none;
-            border: none;
-            font-size: 28px;
-            cursor: pointer;
-            line-height: 1;
-        }
-
-        .esp-modal h2 {
-            font-size: 28px;
-            margin-bottom: 12px;
-        }
-
-        .esp-modal .help {
-            font-size: 15px;
-            color: #222;
-            margin-bottom: 12px;
-        }
-
-        .esp-modal-form {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-
-        .esp-modal-form label { font-weight: 700; }
-
-        .esp-modal-form input,
-        .esp-modal-form select {
-            border: none;
-            border-radius: 10px;
-            padding: 12px;
-            font-size: 16px;
-            width: 100%;
-        }
-
-        .esp-modal-actions {
-            display: flex;
-            justify-content: flex-end;
-            gap: 10px;
-            margin-top: 6px;
-        }
-
-        .esp-btn-secondary,
-        .esp-btn-primary {
-            border: none;
-            border-radius: 10px;
-            padding: 10px 14px;
-            cursor: pointer;
-            font-weight: 700;
-        }
-
-        .esp-btn-secondary { background: #b8b8b8; color: #000; }
-        .esp-btn-primary { background: #000; color: #fff; }
-
-        .card-actions {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
+        /* — Actions carte — */
+        .card-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
         .small-action-btn {
             border: none;
-            border-radius: 10px;
-            background: #efefef;
-            font-size: 13px;
-            padding: 8px 10px;
+            border-radius: 7px;
+            background: rgba(255,255,255,0.5);
+            font-size: 12px;
+            padding: 6px 10px;
             cursor: pointer;
-            font-weight: 700;
+            font-weight: 600;
+            font-family: inherit;
+            transition: background 0.15s;
+        }
+        .small-action-btn:hover    { background: rgba(255,255,255,0.85); }
+        .small-action-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+        .card-plus-btn {
+            width: 36px !important; height: 36px !important;
+            border-radius: 8px !important;
+            background: #000 !important;
+            color: #fff !important;
+            font-size: 18px !important;
+            flex-shrink: 0;
         }
 
-        @media (max-width: 1200px) {
-            .esp-top-summary {
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-            }
-        }
+        /* — Modal — */
+        .esp-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: none; align-items: center; justify-content: center; z-index: 2200; }
+        .esp-modal-overlay.active { display: flex; }
+        .esp-modal { width: min(480px, 92vw); background: #fff; border-radius: 16px; padding: 24px; position: relative; box-shadow: 0 8px 32px rgba(0,0,0,0.14); }
+        .esp-modal-close { position: absolute; right: 14px; top: 10px; background: none; border: none; font-size: 22px; cursor: pointer; color: #888; line-height: 1; }
+        .esp-modal-close:hover { color: #000; }
+        .esp-modal h2 { font-size: 18px; font-weight: 700; margin-bottom: 6px; }
+        .esp-modal .help { font-size: 13px; color: #666; margin-bottom: 16px; }
+        .esp-modal-form { display: flex; flex-direction: column; gap: 10px; }
+        .esp-modal-form label { font-weight: 700; font-size: 13px; color: #333; }
+        .esp-modal-form input, .esp-modal-form select { border: 1.5px solid #d8d8d8; border-radius: 10px; padding: 10px 14px; font-size: 14px; width: 100%; outline: none; font-family: inherit; transition: border-color 0.15s; }
+        .esp-modal-form input:focus, .esp-modal-form select:focus { border-color: #88c6d6; }
+        .esp-modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 6px; }
+        .esp-btn-secondary { background: #e5e5e5; color: #000; border: none; border-radius: 10px; padding: 9px 16px; cursor: pointer; font-weight: 700; font-size: 14px; font-family: inherit; }
+        .esp-btn-secondary:hover { background: #d5d5d5; }
+        .esp-btn-primary    { background: #000;    color: #fff; border: none; border-radius: 10px; padding: 9px 16px; cursor: pointer; font-weight: 700; font-size: 14px; font-family: inherit; }
+        .esp-btn-primary:hover { opacity: 0.82; }
 
-        @media (max-width: 700px) {
-            .esp-top-summary {
-                grid-template-columns: 1fr;
-            }
-        }
+        @media (max-width: 1200px) { .esp-top-summary { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 700px)  { .esp-top-summary { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body class="dashboard-body">
@@ -411,9 +374,21 @@ function formatSecondsAgo(?int $seconds): string
             </div>
 
             <ul class="nav-links">
-                <li><a href="cdi.php">Zone CDI</a></li>
-                <li><a href="esp.php" class="active">Modules ESP</a></li>
-                <li><a href="logout.php">Déconnexion</a></li>
+                <?php if ($liveRole === 1): ?>
+                    <li><a href="index.php">Accueil</a></li>
+                    <li><a href="cdi.php">Zone CDI</a></li>
+                    <li><a href="esp.php" class="active">Modules ESP</a></li>
+                    <li><a href="vehicule.php">V&eacute;hicule</a></li>
+                    <li><a href="radio.php">Salle radio</a></li>
+                    <li><a href="mobile.php">Classe mobile</a></li>
+                    <li><a href="reservation_validation.php">Confirmation</a></li>
+                    <li><a href="register.php">Cr&eacute;er un compte</a></li>
+                    <li><a href="logout.php">D&eacute;connexion</a></li>
+                <?php else: ?>
+                    <li><a href="cdi.php">Zone CDI</a></li>
+                    <li><a href="esp.php" class="active">Modules ESP</a></li>
+                    <li><a href="logout.php">D&eacute;connexion</a></li>
+                <?php endif; ?>
                 <li class="admin-pill"><?php echo htmlspecialchars((string)($_SESSION['login'] ?? 'Compte')); ?></li>
             </ul>
         </nav>
@@ -427,10 +402,10 @@ function formatSecondsAgo(?int $seconds): string
         <?php endif; ?>
 
         <section class="esp-top-summary">
-            <article class="summary-chip"><span class="value"><?php echo (int)$summary['total_modules']; ?></span>Total modules</article>
-            <article class="summary-chip"><span class="value"><?php echo (int)$summary['online_modules']; ?></span>En ligne</article>
-            <article class="summary-chip"><span class="value"><?php echo (int)$summary['offline_modules']; ?></span>Hors ligne</article>
-            <article class="summary-chip"><span class="value"><?php echo (int)$summary['active_alerts']; ?></span>Alertes actives</article>
+            <article class="summary-chip"><span class="value"><?php echo (int)$summary['total_modules']; ?></span><span class="chip-label">Total modules</span></article>
+            <article class="summary-chip"><span class="value"><?php echo (int)$summary['online_modules']; ?></span><span class="chip-label">En ligne</span></article>
+            <article class="summary-chip"><span class="value"><?php echo (int)$summary['offline_modules']; ?></span><span class="chip-label">Hors ligne</span></article>
+            <article class="summary-chip"><span class="value"><?php echo (int)$summary['active_alerts']; ?></span><span class="chip-label">Alertes actives</span></article>
         </section>
 
         <div class="esp-grid">
@@ -438,33 +413,44 @@ function formatSecondsAgo(?int $seconds): string
                 $displayName = $module['nom_module'] !== null && $module['nom_module'] !== ''
                     ? $module['nom_module']
                     : 'ESP ' . ($module['ip_address'] !== '' ? $module['ip_address'] : $module['id']);
-                $zoneName = $module['nom_zone'] ?? 'Non associé';
-                $isAssigned = $module['id_zone'] !== null;
+                $moduleZones = $module['zones'] ?? [];
+                $isAssigned = !empty($moduleZones);
                 $connectionClass = $module['is_online'] ? 'online' : 'offline';
-                $connectionText = $module['is_online'] ? 'Connecté' : 'Non joignable';
-                $activityText = $module['derniere_activite'] ?? 'Aucune activité remontée';
+                $connectionText = $module['is_online'] ? 'Connecté' : 'Hors ligne';
                 $alerts = $module['active_alerts'];
             ?>
                 <article class="esp-card">
                     <div class="esp-card-top">
                         <div>
                             <h2 class="module-title"><?php echo htmlspecialchars((string)$displayName); ?></h2>
-                            <p class="module-zone"><?php echo htmlspecialchars((string)$zoneName); ?></p>
+                            <?php if (!empty($moduleZones)): ?>
+                                <div class="zone-tags">
+                                    <?php foreach ($moduleZones as $z): ?>
+                                        <form method="POST" class="zone-tag-form">
+                                            <input type="hidden" name="action" value="remove_zone">
+                                            <input type="hidden" name="module_id" value="<?php echo (int)$module['id']; ?>">
+                                            <input type="hidden" name="zone_id" value="<?php echo (int)$z['id']; ?>">
+                                            <button type="submit" class="zone-tag" title="Retirer cette zone"><?php echo htmlspecialchars($z['nom']); ?> ×</button>
+                                        </form>
+                                    <?php endforeach; ?>
+                                </div>
+                            <?php else: ?>
+                                <p class="module-zone">Non associé</p>
+                            <?php endif; ?>
                         </div>
                     </div>
 
                     <div class="status-row">
                         <span class="connection-pill <?php echo $connectionClass; ?>">
-                            <i class="fa-solid <?php echo $module['is_online'] ? 'fa-wifi' : 'fa-triangle-exclamation'; ?>"></i>
+                            <?php echo $module['is_online'] ? '●' : '⚠'; ?>
                             <?php echo $connectionText; ?>
                         </span>
-                        <span style="font-size:13px; font-weight:700; color:#333;">Signal: <?php echo htmlspecialchars(formatSecondsAgo($module['secondes_depuis_signal'])); ?></span>
+                        <span class="signal-label">Signal: <?php echo htmlspecialchars(formatSecondsAgo($module['secondes_depuis_signal'])); ?></span>
                     </div>
 
                     <div class="module-meta">
                         <div><strong>IP:</strong> <?php echo htmlspecialchars($module['ip_address'] !== '' ? $module['ip_address'] : '--'); ?></div>
                         <div><strong>Dernier signal:</strong> <?php echo htmlspecialchars(formatLastSignal($module['dernier_signal'])); ?></div>
-                        <div><strong>Activité :</strong> <span class="activity-label"><?php echo htmlspecialchars((string)$activityText); ?></span></div>
                     </div>
 
                     <?php if (!empty($alerts)): ?>
@@ -482,24 +468,27 @@ function formatSecondsAgo(?int $seconds): string
                             <form method="POST" class="inline-form">
                                 <input type="hidden" name="action" value="disconnect_module">
                                 <input type="hidden" name="module_id" value="<?php echo (int)$module['id']; ?>">
-                                <button class="small-action-btn" type="submit" <?php echo $isAssigned ? '' : 'disabled'; ?>>Désassocier</button>
+                                <button class="small-action-btn" type="submit" <?php echo $isAssigned ? '' : 'disabled'; ?>>Tout désassocier</button>
                             </form>
 
-                            <form method="POST" class="inline-form">
-                                <input type="hidden" name="action" value="mark_unreachable">
-                                <input type="hidden" name="module_id" value="<?php echo (int)$module['id']; ?>">
-                                <button class="small-action-btn" type="submit">Signaler non joignable</button>
-                            </form>
+                            <?php if ($canAddModule): ?>
+                                <form method="POST" class="inline-form" onsubmit="return confirm('Supprimer définitivement ce module ?');">
+                                    <input type="hidden" name="action" value="delete_module">
+                                    <input type="hidden" name="module_id" value="<?php echo (int)$module['id']; ?>">
+                                    <button class="small-action-btn" type="submit">Supprimer</button>
+                                </form>
+                            <?php endif; ?>
                         </div>
 
                         <button
                             class="card-plus-btn open-assign-modal"
                             type="button"
-                            aria-label="Associer à une zone"
+                            aria-label="Ajouter une zone"
                             data-module-id="<?php echo (int)$module['id']; ?>"
                             data-module-name="<?php echo htmlspecialchars((string)$displayName, ENT_QUOTES); ?>"
+                            data-zones="<?php echo htmlspecialchars(json_encode($moduleZones, JSON_UNESCAPED_UNICODE), ENT_QUOTES); ?>"
                         >
-                            <i class="fa-solid fa-plus"></i>
+                            +
                         </button>
                     </div>
                 </article>
@@ -530,9 +519,6 @@ function formatSecondsAgo(?int $seconds): string
                     <label for="moduleNameInput">Nom du module</label>
                     <input id="moduleNameInput" type="text" name="module_name" placeholder="Ex: ESP rayon Histoire">
 
-                    <label for="heartbeatInput">Fréquence heartbeat (sec)</label>
-                    <input id="heartbeatInput" type="number" min="10" max="3600" name="heartbeat_interval_sec" value="60" required>
-
                     <div class="esp-modal-actions">
                         <button type="button" class="esp-btn-secondary" data-close-modal="addModuleModal">Annuler</button>
                         <button type="submit" class="esp-btn-primary">Ajouter</button>
@@ -545,16 +531,19 @@ function formatSecondsAgo(?int $seconds): string
     <div class="esp-modal-overlay" id="assignZoneModal">
         <div class="esp-modal">
             <button class="esp-modal-close" type="button" data-close-modal="assignZoneModal">&times;</button>
-            <h2>Associer un module</h2>
-            <p class="help" id="assignHelpText">Sélectionnez une zone.</p>
+            <h2>Ajouter une ou plusieurs zones</h2>
+            <p class="help" id="assignHelpText">Sélectionnez une ou plusieurs zones à associer.</p>
+            <div id="assignCurrentZones" style="margin-bottom:12px;display:none;">
+                <p style="font-size:12px;font-weight:700;color:#555;margin-bottom:6px;">Zones déjà associées :</p>
+                <div id="assignCurrentZonesList" class="zone-tags"></div>
+            </div>
 
             <form method="POST" class="esp-modal-form">
                 <input type="hidden" name="action" value="assign_module_zone">
                 <input type="hidden" name="module_id" id="assignModuleIdInput" value="">
 
-                <label for="assignZoneSelect">Zone</label>
-                <select id="assignZoneSelect" name="zone_id" <?php echo empty($zones) ? 'disabled' : ''; ?> required>
-                    <option value="">Choisir une zone</option>
+                <label for="assignZoneSelect">Zones à associer</label>
+                <select id="assignZoneSelect" name="zone_ids[]" <?php echo empty($zones) ? 'disabled' : ''; ?> required multiple size="6">
                     <?php foreach ($zones as $zone): ?>
                         <option value="<?php echo (int)$zone['id_zone']; ?>"><?php echo htmlspecialchars((string)$zone['nom_zone']); ?></option>
                     <?php endforeach; ?>
@@ -562,7 +551,7 @@ function formatSecondsAgo(?int $seconds): string
 
                 <div class="esp-modal-actions">
                     <button type="button" class="esp-btn-secondary" data-close-modal="assignZoneModal">Annuler</button>
-                    <button type="submit" class="esp-btn-primary" <?php echo empty($zones) ? 'disabled' : ''; ?>>Associer</button>
+                    <button type="submit" class="esp-btn-primary" <?php echo empty($zones) ? 'disabled' : ''; ?>>Ajouter</button>
                 </div>
             </form>
         </div>
@@ -581,22 +570,37 @@ function formatSecondsAgo(?int $seconds): string
             });
         }
 
+        const assignCurrentZones = document.getElementById('assignCurrentZones');
+        const assignCurrentZonesList = document.getElementById('assignCurrentZonesList');
+        const assignZoneSelect = document.getElementById('assignZoneSelect');
+
         document.querySelectorAll('.open-assign-modal').forEach((button) => {
             button.addEventListener('click', () => {
                 const moduleId = button.dataset.moduleId || '';
                 const moduleName = button.dataset.moduleName || 'ce module';
+                const zones = JSON.parse(button.dataset.zones || '[]');
+                const assignedIds = new Set(zones.map(z => String(z.id)));
 
-                if (assignModuleIdInput) {
-                    assignModuleIdInput.value = moduleId;
+                if (assignModuleIdInput) assignModuleIdInput.value = moduleId;
+                if (assignHelpText) assignHelpText.textContent = `Ajouter une ou plusieurs zones à ${moduleName}.`;
+
+                if (assignCurrentZonesList) {
+                    assignCurrentZonesList.innerHTML = zones.length
+                        ? zones.map(z => `<span class="zone-tag" style="cursor:default">${z.nom}</span>`).join('')
+                        : '';
+                }
+                if (assignCurrentZones) {
+                    assignCurrentZones.style.display = zones.length ? 'block' : 'none';
                 }
 
-                if (assignHelpText) {
-                    assignHelpText.textContent = `Associer ${moduleName} à une zone.`;
+                if (assignZoneSelect) {
+                    Array.from(assignZoneSelect.options).forEach(opt => {
+                        opt.disabled = assignedIds.has(opt.value);
+                        opt.selected = false;
+                    });
                 }
 
-                if (assignZoneModal) {
-                    assignZoneModal.classList.add('active');
-                }
+                if (assignZoneModal) assignZoneModal.classList.add('active');
             });
         });
 

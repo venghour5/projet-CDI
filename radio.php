@@ -1,20 +1,15 @@
-﻿<?php
+<?php
+header('Content-Type: text/html; charset=UTF-8');
 session_start();
 require_once 'db.php';
 require_once __DIR__ . '/src/reservation_workflow.php';
-if (!isset($_SESSION['id_user'])) {
-    header("Location: login.php");
-    exit();
-}
+require_once __DIR__ . '/src/auth_session.php';
 
-if (!in_array((int)($_SESSION['role'] ?? -1), [1, 3, 4], true)) {
-    header("Location: cdi.php");
-    exit();
-}
+$sessionUser = requireAuthenticatedSessionUser($pdo, [1, 3, 4], 'cdi.php');
 
 ensureReservationWorkflowSchema($pdo);
-$currentRole = (int)($_SESSION['role'] ?? -1);
-$currentLogin = (string)($_SESSION['login'] ?? '');
+$currentRole = (int)$sessionUser['role'];
+$currentLogin = (string)$sessionUser['nom'];
 $approvedReservations = fetchApprovedReservations($pdo, 2);
 $teacherNames = fetchTeacherNames($pdo);
 ?>
@@ -25,7 +20,7 @@ $teacherNames = fetchTeacherNames($pdo);
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Réservation Salle Radio</title>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style-reservation.css?v=20260518" />
+  <link rel="stylesheet" href="style-reservation.css?v=20260520" />
 </head>
 <body>
 
@@ -37,15 +32,26 @@ $teacherNames = fetchTeacherNames($pdo);
         CDI <span class="logo-separator">-</span> Lycée
       </a>
     </div>
-
     <ul class="nav-links">
-      <li><a href="vehicule.php">Véhicule</a></li>
-      <li><a href="radio.php" class="active">Salle radio</a></li>
-      <li><a href="mobile.php">Classe mobile</a></li>
-      <?php if (in_array($currentRole, [1, 4], true)): ?>
+      <?php if ($currentRole === 1): ?>
+        <li><a href="index.php">Accueil</a></li>
+        <li><a href="cdi.php">Zone CDI</a></li>
+        <li><a href="esp.php">Modules ESP</a></li>
+        <li><a href="vehicule.php">V&eacute;hicule</a></li>
+        <li><a href="radio.php" class="active">Salle radio</a></li>
+        <li><a href="mobile.php">Classe mobile</a></li>
         <li><a href="reservation_validation.php">Confirmation</a></li>
+        <li><a href="register.php">Cr&eacute;er un compte</a></li>
+        <li><a href="logout.php">D&eacute;connexion</a></li>
+      <?php else: ?>
+        <li><a href="vehicule.php">V&eacute;hicule</a></li>
+        <li><a href="radio.php" class="active">Salle radio</a></li>
+        <li><a href="mobile.php">Classe mobile</a></li>
+        <?php if (in_array($currentRole, [1, 4], true)): ?>
+          <li><a href="reservation_validation.php">Confirmation</a></li>
+        <?php endif; ?>
+        <li><a href="logout.php">D&eacute;connexion</a></li>
       <?php endif; ?>
-      <li><a href="logout.php">Déconnexion</a></li>
       <li class="admin-pill"><?php echo htmlspecialchars((string)($_SESSION['login'] ?? 'Compte')); ?></li>
     </ul>
   </nav>
@@ -56,22 +62,16 @@ $teacherNames = fetchTeacherNames($pdo);
 
     <section class="agenda-card">
       <h2 class="agenda-title">Planning salle radio</h2>
-      <div class="week-nav">
-        <button type="button" class="week-nav-btn" id="prevWeekBtn" aria-label="Semaine précédente" title="Semaine précédente">&larr;</button>
-        <span class="week-range" id="weekRangeLabel"></span>
-        <button type="button" class="week-nav-btn" id="nextWeekBtn" aria-label="Semaine suivante" title="Semaine suivante">&rarr;</button>
-      </div>
 
-      <div class="agenda-grid" id="agenda">
-        <div class="corner"></div>
-        <div class="day-header">Lundi</div>
-        <div class="day-header">Mardi</div>
-        <div class="day-header">Mercredi</div>
-        <div class="day-header">Jeudi</div>
-        <div class="day-header">Vendredi</div>
-        <div class="day-header">Samedi</div>
-        <div class="day-header">Dimanche</div>
+      <div class="week-nav">
+        <button type="button" class="week-nav-btn" id="prevWeekBtn" aria-label="Semaine précédente">&larr;</button>
+        <button type="button" class="week-nav-btn today-btn" id="todayBtn" disabled>Aujourd'hui</button>
+        <span class="week-range" id="weekRangeLabel" title="Cliquer pour choisir une date"></span>
+        <button type="button" class="week-nav-btn" id="nextWeekBtn" aria-label="Semaine suivante">&rarr;</button>
       </div>
+      <div class="date-jump-popover" id="dateJumpPopover"></div>
+
+      <div class="agenda-grid" id="agenda"></div>
     </section>
 
     <aside class="history-card">
@@ -91,6 +91,17 @@ $teacherNames = fetchTeacherNames($pdo);
 
   </div>
 </main>
+
+<div class="modal-overlay" id="cancelModal">
+  <div class="modal-box">
+    <h2>Annuler la réservation</h2>
+    <p class="cancel-info" id="cancelSlotInfo"></p>
+    <div class="modal-actions">
+      <button type="button" class="modal-btn cancel-btn" id="cancelModalClose">Retour</button>
+      <button type="button" class="modal-btn confirm-btn danger-btn" id="confirmCancelBtn">Supprimer</button>
+    </div>
+  </div>
+</div>
 
 <div class="modal-overlay" id="modal">
   <div class="modal-box">
@@ -123,356 +134,432 @@ $teacherNames = fetchTeacherNames($pdo);
     </div>
 
     <div class="modal-actions">
-      <button id="cancel" type="button" class="modal-btn cancel-btn">Annuler</button>
-      <button id="confirm" type="button" class="modal-btn confirm-btn">Valider</button>
+      <button id="cancelBtn" type="button" class="modal-btn cancel-btn">Annuler</button>
+      <button id="confirmBtn" type="button" class="modal-btn confirm-btn">Valider</button>
     </div>
   </div>
 </div>
 
+<div class="toast-container" id="toastContainer"></div>
+
 <script>
 const CURRENT_ROLE = <?php echo (int)$currentRole; ?>;
 const CURRENT_LOGIN = <?php echo json_encode($currentLogin, JSON_UNESCAPED_UNICODE); ?>;
-const RESOURCE_ID = 2;
+const RESOURCE_ID   = 2;
 const RESOURCE_NAME = "Salle radio";
 const APPROVED_RESERVATIONS = <?php echo json_encode($approvedReservations, JSON_UNESCAPED_UNICODE); ?>;
 
-const times = ["8h35", "9h35", "10h45", "11h45", "13h15", "14h15", "15h25", "16h25", "17h20"];
-const agenda = document.getElementById("agenda");
-const historyList = document.getElementById("historyList");
-const historyEmpty = document.getElementById("historyEmpty");
+const times = ["8h35","9h35","10h45","11h45","13h15","14h15","15h25","16h25","17h20"];
+const agenda          = document.getElementById("agenda");
+const historyList     = document.getElementById("historyList");
+const historyEmpty    = document.getElementById("historyEmpty");
 const historyToggleBtn = document.getElementById("historyToggleBtn");
-const legendList = document.getElementById("legendList");
-const weekRangeLabel = document.getElementById("weekRangeLabel");
-const prevWeekBtn = document.getElementById("prevWeekBtn");
-const nextWeekBtn = document.getElementById("nextWeekBtn");
+const legendList      = document.getElementById("legendList");
+const weekRangeLabel  = document.getElementById("weekRangeLabel");
+const prevWeekBtn     = document.getElementById("prevWeekBtn");
+const nextWeekBtn     = document.getElementById("nextWeekBtn");
+const todayBtn        = document.getElementById("todayBtn");
+const modal           = document.getElementById("modal");
+const teacherInput    = document.getElementById("teacher");
+const durationSelect  = document.getElementById("duration");
+const slotInfo        = document.getElementById("slotInfo");
+const confirmBtn      = document.getElementById("confirmBtn");
+const toastContainer  = document.getElementById("toastContainer");
+const dateJumpPopover = document.getElementById("dateJumpPopover");
+const cancelModal     = document.getElementById("cancelModal");
+const cancelSlotInfo  = document.getElementById("cancelSlotInfo");
+const cancelModalClose = document.getElementById("cancelModalClose");
+const confirmCancelBtn = document.getElementById("confirmCancelBtn");
+const isProf  = CURRENT_ROLE === 3;
+const isAdmin = [1, 4].includes(CURRENT_ROLE);
 
-const modal = document.getElementById("modal");
-const teacherInput = document.getElementById("teacher");
-const durationSelect = document.getElementById("duration");
-const slotInfo = document.getElementById("slotInfo");
-const confirmButton = document.getElementById("confirm");
-const isProf = CURRENT_ROLE === 3;
-
-const colors = ["#ff6b6b", "#4dabf7", "#51cf66", "#fcc419", "#845ef7", "#ff922b"];
+const colors = ["#ff6b6b","#4dabf7","#51cf66","#fcc419","#845ef7","#ff922b","#e74c3c","#1abc9c","#9b59b6","#f39c12"];
 const teacherColors = {};
 
+let cancelModalReservationId = null;
 let selected = null;
 let currentWeekOffset = 0;
+let calYear  = new Date().getFullYear();
+let calMonth = new Date().getMonth();
 let weekDays = [];
 let weekDayLabelByIso = {};
 let historyLoaded = false;
 let historyExpanded = false;
 
-function updateSlotInfoText() {
-  if (!selected || !slotInfo || !durationSelect) return;
-  const dayLabel = selected.dataset.dayLabel || selected.dataset.day;
-  const durationValue = parseInt(durationSelect.value, 10);
-  if (durationValue === times.length) {
-    slotInfo.textContent = `Créneau sélectionné : ${dayLabel} de ${times[0]} à ${times[times.length - 1]}`;
-  } else {
-    slotInfo.textContent = `Créneau sélectionné : ${dayLabel} à ${selected.dataset.time}`;
-  }
+// ── Toast ─────────────────────────────────────────
+function showToast(message, type = "info") {
+  const t = document.createElement("div");
+  t.className = `toast toast-${type}`;
+  t.textContent = message;
+  toastContainer.appendChild(t);
+  requestAnimationFrame(() => requestAnimationFrame(() => t.classList.add("toast-show")));
+  setTimeout(() => { t.classList.remove("toast-show"); setTimeout(() => t.remove(), 250); }, 3500);
 }
 
-if (isProf && confirmButton) {
-  confirmButton.textContent = "Demander";
-}
+// ── Helpers ───────────────────────────────────────
+function pad2(v) { return String(v).padStart(2,"0"); }
 
-function pad2(value) {
-  return String(value).padStart(2, "0");
-}
-
-function buildWeekDays(weekOffset = 0) {
-  const names = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi"];
-  const now = new Date();
-  const mondayOffset = (now.getDay() + 6) % 7;
-  const monday = new Date(now);
-  monday.setHours(0, 0, 0, 0);
-  monday.setDate(now.getDate() - mondayOffset + (weekOffset * 7));
-
-  return names.map((name, index) => {
-    const d = new Date(monday);
-    d.setDate(monday.getDate() + index);
-    const iso = `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
-    const display = `${name} ${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}`;
-    return { iso, display, date: d };
-  });
-}
-
-function updateWeekRangeLabel() {
-  if (!weekRangeLabel || weekDays.length === 0) return;
-  const first = weekDays[0].display.split(" ")[1];
-  const last = weekDays[weekDays.length - 1].display.split(" ")[1];
-  weekRangeLabel.textContent = `Semaine du ${first} au ${last}`;
-}
-
-function displayDayLabel(dayValue) {
-  if (weekDayLabelByIso[dayValue]) return weekDayLabelByIso[dayValue];
-  if (/^\d{4}-\d{2}-\d{2}$/.test(dayValue)) {
-    const parts = dayValue.split("-");
-    return `${parts[2]}/${parts[1]}`;
-  }
-  return dayValue;
+function todayISO() {
+  const d = new Date();
+  return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
 }
 
 function isPastDay(dayKey) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dayKey)) return false;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const dayDate = new Date(`${dayKey}T00:00:00`);
-  return dayDate < today;
+  const t = new Date(); t.setHours(0,0,0,0);
+  return new Date(`${dayKey}T00:00:00`) < t;
+}
+
+function displayDayLabel(v) {
+  if (weekDayLabelByIso[v]) return weekDayLabelByIso[v];
+  if (/^\d{4}-\d{2}-\d{2}$/.test(v)) { const [,m,d]=v.split("-"); return `${d}/${m}`; }
+  return v;
+}
+
+// ── Semaine ───────────────────────────────────────
+function buildWeekDays(offset=0) {
+  const names = ["Lundi","Mardi","Mercredi","Jeudi","Vendredi"];
+  const now = new Date();
+  const monday = new Date(now);
+  monday.setHours(0,0,0,0);
+  monday.setDate(now.getDate() - (now.getDay()+6)%7 + offset*7);
+  return names.map((name,i) => {
+    const d = new Date(monday); d.setDate(monday.getDate()+i);
+    const iso = `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
+    return { iso, display:`${name} ${pad2(d.getDate())}/${pad2(d.getMonth()+1)}`, date:d };
+  });
+}
+
+function updateWeekRangeLabel() {
+  if (!weekDays.length) return;
+  weekRangeLabel.textContent = `Semaine du ${weekDays[0].display.split(" ")[1]} au ${weekDays[4].display.split(" ")[1]}`;
+}
+
+// ── Grille agenda (générée dynamiquement) ─────────
+function getColor(name) {
+  if (!teacherColors[name]) teacherColors[name] = colors[Object.keys(teacherColors).length % colors.length];
+  return teacherColors[name];
 }
 
 function renderAgendaGrid() {
   if (!agenda) return;
-  agenda.style.gridTemplateColumns = "90px repeat(5, 1fr)";
   agenda.innerHTML = "";
+
+  const today = todayISO();
 
   const corner = document.createElement("div");
   corner.className = "corner";
   agenda.appendChild(corner);
 
-  weekDays.forEach((day) => {
-    const header = document.createElement("div");
-    header.className = "day-header";
-    header.textContent = day.display;
-    agenda.appendChild(header);
+  weekDays.forEach(day => {
+    const h = document.createElement("div");
+    h.className = "day-header" + (day.iso === today ? " today" : "");
+    h.textContent = day.display;
+    agenda.appendChild(h);
   });
 
-  times.forEach((time) => {
+  times.forEach(time => {
     const label = document.createElement("div");
     label.className = "time-label";
     label.textContent = time;
     agenda.appendChild(label);
 
-    weekDays.forEach((day) => {
+    weekDays.forEach(day => {
       const slot = document.createElement("button");
       slot.type = "button";
-      slot.className = "slot";
-      slot.dataset.day = day.iso;
+      slot.className = "slot" + (isPastDay(day.iso) ? " past" : "");
+      slot.dataset.day      = day.iso;
       slot.dataset.dayLabel = day.display;
-      slot.dataset.time = time;
+      slot.dataset.time     = time;
+      slot.disabled         = isPastDay(day.iso);
       agenda.appendChild(slot);
     });
   });
 }
 
-function getColor(name) {
-  if (!teacherColors[name]) {
-    teacherColors[name] = colors[Object.keys(teacherColors).length % colors.length];
+// ── Réservations ──────────────────────────────────
+function markReservation(dayKey, startTime, duration, name, reservationId = null) {
+  const si = times.indexOf(startTime);
+  if (si < 0) return;
+  const ei    = Math.min(si+duration-1, times.length-1);
+  const color = getColor(name);
+  const slots = Array.from(agenda.querySelectorAll(`.slot[data-day="${dayKey}"]`));
+  const short = name.length > 13 ? name.substring(0,12)+"…" : name;
+  const endTime = times[ei];
+
+  for (let i = si; i <= ei; i++) {
+    const s = slots[i]; if (!s) continue;
+    s.classList.add("reserved");
+    s.style.background = color;
+    s.style.color = "#fff";
+    s.disabled = !isAdmin;
+    s.title = `${name} — ${startTime} à ${endTime} (${duration}h)`;
+    if (reservationId) s.dataset.reservationId = reservationId;
+    s.innerHTML = i === si
+      ? `<span class="slot-name">${short}</span><span class="slot-duration">${startTime}–${endTime}</span>`
+      : `<span class="slot-continuation">↕</span>`;
   }
-  return teacherColors[name];
 }
 
 function updateLegend(activeNames = null) {
-  const selectedNames = Array.isArray(activeNames) ? activeNames : Object.keys(teacherColors);
-  const entries = selectedNames.map((name) => [name, teacherColors[name]]).filter(([, color]) => Boolean(color));
-  if (entries.length === 0) {
-    legendList.innerHTML = '<p class="legend-empty">Aucun professeur.</p>';
-    return;
-  }
-
+  const names = Array.isArray(activeNames) ? activeNames : Object.keys(teacherColors);
+  const entries = names.filter(n => teacherColors[n]);
+  if (!entries.length) { legendList.innerHTML='<p class="legend-empty">Aucun professeur.</p>'; return; }
   legendList.innerHTML = "";
-  entries.forEach(([name, color]) => {
-    const item = document.createElement("div");
-    item.className = "legend-item";
-    item.innerHTML = `<div class="legend-color" style="background:${color}"></div><span>${name}</span>`;
+  entries.forEach(name => {
+    const item = document.createElement("div"); item.className = "legend-item";
+    item.innerHTML = `<div class="legend-color" style="background:${teacherColors[name]}"></div><span class="legend-name">${name}</span>`;
     legendList.appendChild(item);
   });
 }
 
-function markReservation(dayKey, startTime, duration, name) {
-  const startIndex = times.indexOf(startTime);
-  if (startIndex < 0) return;
-
-  const color = getColor(name);
-  const daySlots = [...document.querySelectorAll(`.slot[data-day="${dayKey}"]`)];
-
-  for (let i = 0; i < duration; i++) {
-    const slot = daySlots[startIndex + i];
-    if (!slot) continue;
-    slot.classList.add("reserved");
-    slot.style.background = color;
-    slot.style.color = "#fff";
-    if (i === 0) slot.textContent = name;
-  }
+function renderApprovedReservationsForWeek() {
+  if (!Array.isArray(APPROVED_RESERVATIONS)) { updateLegend([]); return; }
+  const active = new Set();
+  APPROVED_RESERVATIONS.forEach(r => {
+    if (!weekDayLabelByIso[r.day]) return;
+    const name = r.demandeur || "Utilisateur";
+    markReservation(r.day, r.heure_debut||"", Number(r.duree||1), name, r.id || null);
+    if (!isPastDay(r.day)) active.add(name);
+  });
+  updateLegend(Array.from(active));
 }
 
-function appendHistory(dayLabel, startTime, duration, name, statusText, isRequest = false) {
+// ── Historique ────────────────────────────────────
+function appendHistory(dayLabel, startTime, duration, name, statusText, isRequest=false) {
   historyEmpty?.remove();
-  const item = document.createElement("div");
-  item.className = "history-item";
-  const actionText = isRequest ? "Demande" : "Réservation";
-  item.innerHTML = `<strong>${dayLabel}</strong> ${actionText} ${RESOURCE_NAME} - ${name} (${duration}h) - ${statusText}`;
+  const si = times.indexOf(startTime);
+  const endTime = si >= 0 && si+duration-1 < times.length ? times[si+duration-1] : startTime;
+  const item = document.createElement("div"); item.className = "history-item";
+  const action = isRequest ? "Demande" : "Réservation";
+  item.innerHTML = `<strong>${dayLabel}</strong><span>${action} ${RESOURCE_NAME} — ${startTime} à ${endTime}</span><span>Professeur : ${name}</span><span>Durée : ${duration}h — ${statusText}</span>`;
   historyList.prepend(item);
   updateHistoryListCompact();
 }
 
 function updateHistoryListCompact() {
-  if (!historyList) return;
   const count = historyList.querySelectorAll(".history-item").length;
-  const shouldCompact = count > 2;
-
-  if (historyToggleBtn) {
-    historyToggleBtn.classList.toggle("hidden", !shouldCompact);
-    historyToggleBtn.textContent = historyExpanded ? "Voir moins" : "Voir plus";
-  }
-
-  historyList.classList.toggle("expanded", historyExpanded && shouldCompact);
-  historyList.classList.toggle("compact", !historyExpanded && shouldCompact);
-}
-
-function renderApprovedReservationsForWeek() {
-  if (!Array.isArray(APPROVED_RESERVATIONS)) { updateLegend([]); return; }
-  const activeTeacherNames = new Set();
-  APPROVED_RESERVATIONS.forEach((reservation) => {
-    const dayKey = reservation.day || "";
-    if (!weekDayLabelByIso[dayKey]) return;
-    const name = reservation.demandeur || "Utilisateur";
-    const duration = Number(reservation.duree || 1);
-    markReservation(dayKey, reservation.heure_debut || "", duration, name);
-    if (!isPastDay(dayKey)) {
-      activeTeacherNames.add(name);
-    }
-  });
-  updateLegend(Array.from(activeTeacherNames));
+  const compact = count > 2;
+  if (historyToggleBtn) { historyToggleBtn.classList.toggle("hidden", !compact); historyToggleBtn.textContent = historyExpanded ? "Voir moins" : "Voir plus"; }
+  historyList.classList.toggle("expanded", historyExpanded && compact);
+  historyList.classList.toggle("compact", !historyExpanded && compact);
 }
 
 function loadHistoryOnce() {
   if (historyLoaded || !Array.isArray(APPROVED_RESERVATIONS)) return;
-  APPROVED_RESERVATIONS.forEach((reservation) => {
-    const dayKey = reservation.day || "";
-    const dayLabel = displayDayLabel(dayKey);
-    const name = reservation.demandeur || "Utilisateur";
-    const duration = Number(reservation.duree || 1);
-    appendHistory(dayLabel, reservation.heure_debut || "", duration, name, "Confirmée");
+  APPROVED_RESERVATIONS.forEach(r => {
+    appendHistory(displayDayLabel(r.day||""), r.heure_debut||"", Number(r.duree||1), r.demandeur||"Utilisateur", "Confirmée");
   });
   updateHistoryListCompact();
   historyLoaded = true;
 }
 
-if (historyToggleBtn) {
-  historyToggleBtn.addEventListener("click", () => {
-    historyExpanded = !historyExpanded;
-    updateHistoryListCompact();
-  });
-}
-
+// ── Refresh ───────────────────────────────────────
 function refreshWeek() {
-  weekDays = buildWeekDays(currentWeekOffset);
-  weekDayLabelByIso = Object.fromEntries(weekDays.map((d) => [d.iso, d.display]));
+  weekDays         = buildWeekDays(currentWeekOffset);
+  weekDayLabelByIso = Object.fromEntries(weekDays.map(d=>[d.iso,d.display]));
   updateWeekRangeLabel();
   renderAgendaGrid();
   renderApprovedReservationsForWeek();
+  if (todayBtn) todayBtn.disabled = currentWeekOffset === 0;
 }
 
-refreshWeek();
-loadHistoryOnce();
+// ── Navigation ────────────────────────────────────
+function isoToWeekOffset(iso) {
+  const target = new Date(`${iso}T00:00:00`);
+  const tMon = new Date(target);
+  tMon.setDate(target.getDate() - (target.getDay() + 6) % 7);
+  tMon.setHours(0, 0, 0, 0);
+  const now = new Date();
+  const nMon = new Date(now);
+  nMon.setDate(now.getDate() - (now.getDay() + 6) % 7);
+  nMon.setHours(0, 0, 0, 0);
+  return Math.round((tMon - nMon) / (7 * 24 * 60 * 60 * 1000));
+}
 
-if (prevWeekBtn) {
-  prevWeekBtn.addEventListener("click", () => {
-    currentWeekOffset -= 1;
-    selected = null;
-    refreshWeek();
+prevWeekBtn.addEventListener("click", () => { currentWeekOffset--; selected=null; refreshWeek(); });
+nextWeekBtn.addEventListener("click", () => { currentWeekOffset++; selected=null; refreshWeek(); });
+todayBtn.addEventListener("click", () => { if (currentWeekOffset===0) return; currentWeekOffset=0; selected=null; refreshWeek(); });
+
+function buildCalendar() {
+  const today = todayISO();
+  const wMon  = weekDays.length ? weekDays[0].iso : null;
+  const wFri  = weekDays.length ? weekDays[4].iso : null;
+  const first = new Date(calYear, calMonth, 1);
+  const days  = new Date(calYear, calMonth + 1, 0).getDate();
+  const start = (first.getDay() + 6) % 7;
+  const label = new Intl.DateTimeFormat("fr-FR", { month:"long", year:"numeric" }).format(first);
+  let h = `<div class="cal-header">
+    <button class="cal-nav" id="calPrev">‹</button>
+    <span class="cal-month-label">${label}</span>
+    <button class="cal-nav" id="calNext">›</button>
+  </div><div class="cal-grid">
+    <span class="cal-dow">L</span><span class="cal-dow">M</span><span class="cal-dow">M</span>
+    <span class="cal-dow">J</span><span class="cal-dow">V</span><span class="cal-dow">S</span>
+    <span class="cal-dow">D</span>`;
+  for (let i = 0; i < start; i++) h += `<span class="cal-empty"></span>`;
+  for (let d = 1; d <= days; d++) {
+    const iso = `${calYear}-${pad2(calMonth+1)}-${pad2(d)}`;
+    const dow = new Date(`${iso}T00:00:00`).getDay();
+    let cls = "cal-day";
+    if (iso === today) cls += " cal-today";
+    if (wMon && iso >= wMon && iso <= wFri) cls += " cal-cur-week";
+    if (dow === 0 || dow === 6) cls += " cal-weekend";
+    h += `<button class="${cls}" data-iso="${iso}">${d}</button>`;
+  }
+  h += `</div>`;
+  dateJumpPopover.innerHTML = h;
+  dateJumpPopover.querySelector("#calPrev").addEventListener("click", e => {
+    e.stopPropagation(); if (--calMonth < 0) { calMonth=11; calYear--; } buildCalendar();
+  });
+  dateJumpPopover.querySelector("#calNext").addEventListener("click", e => {
+    e.stopPropagation(); if (++calMonth > 11) { calMonth=0; calYear++; } buildCalendar();
+  });
+  dateJumpPopover.querySelectorAll(".cal-day").forEach(btn => {
+    btn.addEventListener("click", e => {
+      e.stopPropagation();
+      currentWeekOffset = isoToWeekOffset(btn.dataset.iso);
+      selected = null; refreshWeek();
+      dateJumpPopover.classList.remove("open");
+    });
   });
 }
 
-if (nextWeekBtn) {
-  nextWeekBtn.addEventListener("click", () => {
-    currentWeekOffset += 1;
-    selected = null;
-    refreshWeek();
-  });
+weekRangeLabel.addEventListener("click", e => {
+  e.stopPropagation();
+  if (weekDays.length) { const d = new Date(weekDays[0].iso+"T00:00:00"); calYear=d.getFullYear(); calMonth=d.getMonth(); }
+  buildCalendar();
+  const rect = weekRangeLabel.getBoundingClientRect();
+  dateJumpPopover.style.top  = (rect.bottom + 6) + "px";
+  dateJumpPopover.style.left = rect.left + "px";
+  dateJumpPopover.classList.toggle("open");
+});
+document.addEventListener("click", e => {
+  if (!dateJumpPopover.contains(e.target) && e.target !== weekRangeLabel)
+    dateJumpPopover.classList.remove("open");
+});
+
+// ── Clic créneau ──────────────────────────────────
+if (isProf && confirmBtn) confirmBtn.textContent = "Demander";
+
+function updateSlotInfoText() {
+  if (!selected || !slotInfo) return;
+  const dayLabel = selected.dataset.dayLabel || selected.dataset.day;
+  const dur = parseInt(durationSelect.value, 10);
+  slotInfo.textContent = dur === times.length
+    ? `${dayLabel} — journée entière`
+    : `${dayLabel} à ${selected.dataset.time}`;
 }
 
-document.addEventListener("click", (e) => {
-  if (!e.target.classList.contains("slot")) return;
-
-  if (e.target.classList.contains("reserved")) {
-    alert("Déjà réservé");
+agenda.addEventListener("click", e => {
+  const slot = e.target.closest(".slot");
+  if (!slot) return;
+  if (slot.classList.contains("reserved")) {
+    if (isAdmin && slot.dataset.reservationId) {
+      cancelSlotInfo.textContent = slot.title || "Cette réservation";
+      cancelModalReservationId = parseInt(slot.dataset.reservationId, 10);
+      cancelModal.classList.add("active");
+    } else {
+      showToast(`Déjà réservé : ${slot.title || "créneau pris"}`, "error");
+    }
     return;
   }
+  if (slot.classList.contains("past") || slot.disabled) return;
 
-  selected = e.target;
-  teacherInput.value = "";
-  durationSelect.value = "1";
+  agenda.querySelectorAll(".slot.selected").forEach(s => s.classList.remove("selected"));
+  slot.classList.add("selected");
+  selected = slot;
+  teacherInput.value = ""; durationSelect.value = "1";
   updateSlotInfoText();
   modal.classList.add("active");
 });
 
-if (durationSelect) {
-  durationSelect.addEventListener("change", updateSlotInfoText);
+durationSelect.addEventListener("change", updateSlotInfoText);
+
+// ── Modale ────────────────────────────────────────
+function closeModal() {
+  modal.classList.remove("active");
+  if (selected) { selected.classList.remove("selected"); selected = null; }
 }
 
-document.getElementById("cancel").onclick = () => {
-  modal.classList.remove("active");
-  selected = null;
-};
+document.getElementById("cancelBtn").addEventListener("click", closeModal);
+modal.addEventListener("click", e => { if (e.target === modal) closeModal(); });
 
-document.getElementById("confirm").onclick = async () => {
+confirmBtn.addEventListener("click", async () => {
   if (!selected) return;
-
-  const name = (teacherInput.value || "").trim();
+  const name     = teacherInput.value.trim();
   const duration = parseInt(durationSelect.value, 10);
-  const dayKey = selected.dataset.day;
+  const dayKey   = selected.dataset.day;
   const dayLabel = selected.dataset.dayLabel || dayKey;
   const startTime = selected.dataset.time;
   const isFullDay = duration === 9;
-  const effectiveStartTime = isFullDay ? times[0] : startTime;
-  const effectiveDuration = isFullDay ? times.length : duration;
+  const effStart  = isFullDay ? times[0] : startTime;
+  const effDur    = isFullDay ? times.length : duration;
 
-  if (!name) {
-    alert("Nom requis");
-    return;
-  }
+  if (!name) { showToast("Le nom du professeur est obligatoire.", "error"); return; }
 
   try {
     const response = await fetch("reservation_request.php", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ resource_id: RESOURCE_ID, day: dayKey, heure_debut: effectiveStartTime, duree: effectiveDuration, teacher_name: name, full_day: isFullDay })
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ resource_id:RESOURCE_ID, day:dayKey, heure_debut:effStart, duree:effDur, teacher_name:name, full_day:isFullDay })
     });
     const payload = await response.json();
     if (!response.ok || !payload.ok) {
-      alert(
-        payload.error === "slot_taken"
-          ? "Déjà réservé"
-          : (payload.error === "invalid_duration"
-            ? "Durée invalide pour ce créneau."
-            : (payload.error === "invalid_teacher"
-              ? "Professeur invalide."
-            : (CURRENT_ROLE === 3 ? "Demande impossible." : "Réservation impossible."))
-          )
-      );
+      const msgs = { slot_taken:"Ce créneau est déjà réservé.", invalid_duration:"Durée invalide pour ce créneau.", invalid_teacher:"Professeur invalide." };
+      showToast(msgs[payload.error] || (isProf?"Demande impossible.":"Réservation impossible."), "error"); return;
+    }
+    if (isProf) {
+      appendHistory(dayLabel, effStart, effDur, name, "En attente de confirmation", true);
+      showToast("Demande envoyée — en attente de confirmation.", "success");
+    } else {
+      APPROVED_RESERVATIONS.push({ id: payload.id || null, day:dayKey, heure_debut:effStart, duree:effDur, demandeur:name });
+      refreshWeek();
+      appendHistory(dayLabel, effStart, effDur, name, "Confirmée");
+      showToast("Réservation enregistrée.", "success");
+    }
+    closeModal();
+  } catch(err) {
+    showToast("Erreur réseau. Merci de réessayer.", "error");
+  }
+});
+
+// ── Modale annulation ─────────────────────────────
+cancelModalClose.addEventListener("click", () => cancelModal.classList.remove("active"));
+cancelModal.addEventListener("click", e => { if (e.target === cancelModal) cancelModal.classList.remove("active"); });
+
+confirmCancelBtn.addEventListener("click", async () => {
+  if (!cancelModalReservationId) return;
+  try {
+    const res = await fetch("reservation_request.php", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "cancel", reservation_id: cancelModalReservationId })
+    });
+    const payload = await res.json();
+    cancelModal.classList.remove("active");
+    if (!res.ok || !payload.ok) {
+      showToast("Impossible d'annuler cette réservation.", "error");
       return;
     }
-
-    if (CURRENT_ROLE === 3) {
-      appendHistory(dayLabel, effectiveStartTime, effectiveDuration, name, "En attente de confirmation", true);
-      alert("Demande envoyée. En attente de confirmation.");
-    } else {
-      APPROVED_RESERVATIONS.push({ day: dayKey, heure_debut: effectiveStartTime, duree: effectiveDuration, demandeur: name });
-      refreshWeek();
-      appendHistory(dayLabel, effectiveStartTime, effectiveDuration, name, "Confirmée");
-    }
-
-    modal.classList.remove("active");
-    teacherInput.value = "";
-    selected = null;
-  } catch (error) {
-    alert("Erreur réseau.");
+    const idx = APPROVED_RESERVATIONS.findIndex(r => r.id === cancelModalReservationId);
+    if (idx !== -1) APPROVED_RESERVATIONS.splice(idx, 1);
+    cancelModalReservationId = null;
+    refreshWeek();
+    showToast("Réservation annulée.", "success");
+  } catch {
+    showToast("Erreur réseau. Merci de réessayer.", "error");
   }
-};
+});
+
+// ── Init ──────────────────────────────────────────
+refreshWeek();
+loadHistoryOnce();
+
+historyToggleBtn.addEventListener("click", () => {
+  historyExpanded = !historyExpanded;
+  updateHistoryListCompact();
+});
 </script>
 
 </body>
 </html>
-
-
-
-
-
-
-
-
-

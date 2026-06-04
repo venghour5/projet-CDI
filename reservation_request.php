@@ -4,16 +4,18 @@ declare(strict_types=1);
 session_start();
 require_once 'db.php';
 require_once __DIR__ . '/src/reservation_workflow.php';
+require_once __DIR__ . '/src/auth_session.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
-if (!isset($_SESSION['id_user'])) {
+$sessionUser = getAuthenticatedSessionUser($pdo);
+if ($sessionUser === null) {
     http_response_code(401);
     echo json_encode(['ok' => false, 'error' => 'unauthorized']);
     exit();
 }
 
-$role = (int)($_SESSION['role'] ?? -1);
+$role = (int)$sessionUser['role'];
 if (!in_array($role, [1, 3, 4], true)) {
     http_response_code(403);
     echo json_encode(['ok' => false, 'error' => 'forbidden']);
@@ -32,6 +34,25 @@ if (!is_array($data)) {
     $data = $_POST;
 }
 
+$action = trim((string)($data['action'] ?? 'create'));
+
+if ($action === 'cancel') {
+    if (!in_array($role, [1, 4], true)) {
+        http_response_code(403);
+        echo json_encode(['ok' => false, 'error' => 'forbidden']);
+        exit();
+    }
+
+    $reservationId = isset($data['reservation_id']) ? (int)$data['reservation_id'] : 0;
+    $result = cancelApprovedReservation($pdo, $reservationId);
+    if (!$result['ok']) {
+        http_response_code(400);
+    }
+
+    echo json_encode($result);
+    exit();
+}
+
 $resourceId = isset($data['resource_id']) ? (int)$data['resource_id'] : 0;
 $day = trim((string)($data['day'] ?? ''));
 $startTime = trim((string)($data['heure_debut'] ?? ''));
@@ -47,9 +68,9 @@ if ($isFullDay || $duration >= $maxDuration) {
     $duration = $maxDuration;
 }
 
-$reservationUserId = (int)$_SESSION['id_user'];
+$reservationUserId = (int)$sessionUser['id'];
 if ($teacherName === '') {
-    $teacherName = trim((string)($_SESSION['login'] ?? ''));
+    $teacherName = trim((string)$sessionUser['nom']);
 }
 
 if ($teacherName === '') {
@@ -86,7 +107,7 @@ if ($role === 3) {
     exit();
 }
 
-$approve = approveReservationRequest($pdo, (int)($result['id'] ?? 0), (int)$_SESSION['id_user']);
+$approve = approveReservationRequest($pdo, (int)($result['id'] ?? 0), (int)$sessionUser['id']);
 if (!$approve['ok']) {
     http_response_code(400);
     echo json_encode($approve);

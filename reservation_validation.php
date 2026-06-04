@@ -1,23 +1,20 @@
 <?php
 declare(strict_types=1);
+header('Content-Type: text/html; charset=UTF-8');
 
 session_start();
 require_once 'db.php';
 require_once __DIR__ . '/src/reservation_workflow.php';
+require_once __DIR__ . '/src/auth_session.php';
 
-if (!isset($_SESSION['id_user'])) {
-    header('Location: login.php');
-    exit();
-}
-
-$role = (int)($_SESSION['role'] ?? -1);
-if (!in_array($role, [1, 4], true)) {
-    header('Location: index.php');
-    exit();
-}
+$sessionUser = requireAuthenticatedSessionUser($pdo, [1, 4], 'index.php');
+$role = (int)$sessionUser['role'];
 
 ensureReservationWorkflowSchema($pdo);
 $errorCode = (string)($_GET['error'] ?? '');
+$historyPerPage = 5;
+$historyPageInput = isset($_GET['history_page']) ? (int)$_GET['history_page'] : 1;
+$historyPage = max(1, $historyPageInput);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
@@ -57,7 +54,19 @@ $pendingReservations = $pdo->query(
     ORDER BY r.date_creation DESC"
 )->fetchAll(PDO::FETCH_ASSOC);
 
-$validatedReservations = $pdo->query(
+$totalValidatedReservations = (int)$pdo->query(
+    "SELECT COUNT(*)
+     FROM reservation r
+     WHERE r.status IN ('approved', 'rejected')"
+)->fetchColumn();
+
+$totalHistoryPages = max(1, (int)ceil($totalValidatedReservations / $historyPerPage));
+if ($historyPage > $totalHistoryPages) {
+    $historyPage = $totalHistoryPages;
+}
+$historyOffset = ($historyPage - 1) * $historyPerPage;
+
+$validatedStmt = $pdo->prepare(
     "SELECT
         r.id,
         r.day,
@@ -76,8 +85,12 @@ $validatedReservations = $pdo->query(
     LEFT JOIN ressource rs ON rs.id = r.id_ressource
     WHERE r.status IN ('approved', 'rejected')
     ORDER BY r.validated_at DESC
-    LIMIT 50"
-)->fetchAll(PDO::FETCH_ASSOC);
+    LIMIT :limit OFFSET :offset"
+);
+$validatedStmt->bindValue(':limit', $historyPerPage, PDO::PARAM_INT);
+$validatedStmt->bindValue(':offset', $historyOffset, PDO::PARAM_INT);
+$validatedStmt->execute();
+$validatedReservations = $validatedStmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -101,6 +114,24 @@ $validatedReservations = $pdo->query(
         .status-pill { display: inline-block; padding: 4px 8px; border-radius: 999px; font-size: 12px; font-weight: 700; }
         .status-approved { background: #d6ffd0; }
         .status-rejected { background: #ffd0d0; }
+        .history-pagination { margin-top: 14px; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+        .history-page-link {
+            display: inline-block;
+            padding: 6px 10px;
+            border-radius: 8px;
+            background: #efefef;
+            color: #111;
+            text-decoration: none;
+            border: 1px solid #b8b8b8;
+            font-weight: 700;
+            font-size: 13px;
+        }
+        .history-page-link.current {
+            background: #111;
+            color: #fff;
+            border-color: #111;
+            pointer-events: none;
+        }
     </style>
 </head>
 <body class="dashboard-body">
@@ -113,11 +144,23 @@ $validatedReservations = $pdo->query(
             </a>
         </div>
         <ul class="nav-links">
-            <li><a href="vehicule.php">Véhicule</a></li>
-            <li><a href="radio.php">Salle radio</a></li>
-            <li><a href="mobile.php">Classe mobile</a></li>
-            <li><a href="reservation_validation.php" class="active">Confirmation</a></li>
-            <li><a href="logout.php">Déconnexion</a></li>
+            <?php if ($role === 1): ?>
+                <li><a href="index.php">Accueil</a></li>
+                <li><a href="cdi.php">Zone CDI</a></li>
+                <li><a href="esp.php">Modules ESP</a></li>
+                <li><a href="vehicule.php">V&eacute;hicule</a></li>
+                <li><a href="radio.php">Salle radio</a></li>
+                <li><a href="mobile.php">Classe mobile</a></li>
+                <li><a href="reservation_validation.php" class="active">Confirmation</a></li>
+                <li><a href="register.php">Cr&eacute;er un compte</a></li>
+                <li><a href="logout.php">D&eacute;connexion</a></li>
+            <?php else: ?>
+                <li><a href="vehicule.php">V&eacute;hicule</a></li>
+                <li><a href="radio.php">Salle radio</a></li>
+                <li><a href="mobile.php">Classe mobile</a></li>
+                <li><a href="reservation_validation.php" class="active">Confirmation</a></li>
+                <li><a href="logout.php">D&eacute;connexion</a></li>
+            <?php endif; ?>
             <li class="admin-pill"><?php echo htmlspecialchars((string)($_SESSION['login'] ?? 'Compte')); ?></li>
         </ul>
     </nav>
@@ -197,6 +240,22 @@ $validatedReservations = $pdo->query(
                     </article>
                 <?php endforeach; ?>
             </div>
+
+            <?php if ($totalHistoryPages > 1): ?>
+                <nav class="history-pagination" aria-label="Pagination historique">
+                    <?php if ($historyPage > 1): ?>
+                        <a class="history-page-link" href="reservation_validation.php?history_page=<?php echo $historyPage - 1; ?>">Précédent</a>
+                    <?php endif; ?>
+
+                    <?php for ($p = 1; $p <= $totalHistoryPages; $p++): ?>
+                        <a class="history-page-link <?php echo $p === $historyPage ? 'current' : ''; ?>" href="reservation_validation.php?history_page=<?php echo $p; ?>"><?php echo $p; ?></a>
+                    <?php endfor; ?>
+
+                    <?php if ($historyPage < $totalHistoryPages): ?>
+                        <a class="history-page-link" href="reservation_validation.php?history_page=<?php echo $historyPage + 1; ?>">Suivant</a>
+                    <?php endif; ?>
+                </nav>
+            <?php endif; ?>
         <?php endif; ?>
     </section>
 </main>

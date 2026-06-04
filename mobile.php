@@ -1,20 +1,15 @@
-﻿<?php
+<?php
+header('Content-Type: text/html; charset=UTF-8');
 session_start();
 require_once 'db.php';
 require_once __DIR__ . '/src/reservation_workflow.php';
-if (!isset($_SESSION['id_user'])) {
-    header("Location: login.php");
-    exit();
-}
+require_once __DIR__ . '/src/auth_session.php';
 
-if (!in_array((int)($_SESSION['role'] ?? -1), [1, 3, 4], true)) {
-    header("Location: cdi.php");
-    exit();
-}
+$sessionUser = requireAuthenticatedSessionUser($pdo, [1, 3, 4], 'cdi.php');
 
 ensureReservationWorkflowSchema($pdo);
-$currentRole = (int)($_SESSION['role'] ?? -1);
-$currentLogin = (string)($_SESSION['login'] ?? '');
+$currentRole = (int)$sessionUser['role'];
+$currentLogin = (string)$sessionUser['nom'];
 $approvedReservations = fetchApprovedReservations($pdo, 3);
 $teacherNames = fetchTeacherNames($pdo);
 ?>
@@ -25,7 +20,7 @@ $teacherNames = fetchTeacherNames($pdo);
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Réservation Classe mobile</title>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style-reservation.css?v=20260518" />
+  <link rel="stylesheet" href="style-reservation.css?v=20260520" />
 </head>
 <body>
 
@@ -37,15 +32,26 @@ $teacherNames = fetchTeacherNames($pdo);
           CDI <span class="logo-separator">-</span> Lycée
         </a>
       </div>
-
       <ul class="nav-links">
-        <li><a href="vehicule.php">Véhicule</a></li>
-        <li><a href="radio.php">Salle radio</a></li>
-        <li><a href="mobile.php" class="active">Classe mobile</a></li>
-        <?php if (in_array($currentRole, [1, 4], true)): ?>
+        <?php if ($currentRole === 1): ?>
+          <li><a href="index.php">Accueil</a></li>
+          <li><a href="cdi.php">Zone CDI</a></li>
+          <li><a href="esp.php">Modules ESP</a></li>
+          <li><a href="vehicule.php">V&eacute;hicule</a></li>
+          <li><a href="radio.php">Salle radio</a></li>
+          <li><a href="mobile.php" class="active">Classe mobile</a></li>
           <li><a href="reservation_validation.php">Confirmation</a></li>
+          <li><a href="register.php">Cr&eacute;er un compte</a></li>
+          <li><a href="logout.php">D&eacute;connexion</a></li>
+        <?php else: ?>
+          <li><a href="vehicule.php">V&eacute;hicule</a></li>
+          <li><a href="radio.php">Salle radio</a></li>
+          <li><a href="mobile.php" class="active">Classe mobile</a></li>
+          <?php if (in_array($currentRole, [1, 4], true)): ?>
+            <li><a href="reservation_validation.php">Confirmation</a></li>
+          <?php endif; ?>
+          <li><a href="logout.php">D&eacute;connexion</a></li>
         <?php endif; ?>
-        <li><a href="logout.php">Déconnexion</a></li>
         <li class="admin-pill"><?php echo htmlspecialchars((string)($_SESSION['login'] ?? 'Compte')); ?></li>
       </ul>
     </nav>
@@ -56,21 +62,22 @@ $teacherNames = fetchTeacherNames($pdo);
 
       <section class="agenda-card">
         <h2 class="agenda-title">Planning de réservation classe mobile</h2>
-        <div class="week-nav">
-          <button type="button" class="week-nav-btn" id="prevWeekBtn" aria-label="Semaine précédente" title="Semaine précédente">&larr;</button>
-          <span class="week-range" id="weekRangeLabel"></span>
-          <button type="button" class="week-nav-btn" id="nextWeekBtn" aria-label="Semaine suivante" title="Semaine suivante">&rarr;</button>
-        </div>
 
-        <div class="agenda-grid">
+        <div class="week-nav">
+          <button type="button" class="week-nav-btn" id="prevWeekBtn" aria-label="Semaine précédente">&larr;</button>
+          <button type="button" class="week-nav-btn today-btn" id="todayBtn" disabled>Aujourd'hui</button>
+          <span class="week-range" id="weekRangeLabel" title="Cliquer pour choisir une date"></span>
+          <button type="button" class="week-nav-btn" id="nextWeekBtn" aria-label="Semaine suivante">&rarr;</button>
+        </div>
+        <div class="date-jump-popover" id="dateJumpPopover"></div>
+
+        <div class="agenda-grid" id="agendaGrid">
           <div class="corner"></div>
           <div class="day-header">Lundi</div>
           <div class="day-header">Mardi</div>
           <div class="day-header">Mercredi</div>
           <div class="day-header">Jeudi</div>
           <div class="day-header">Vendredi</div>
-          <div class="day-header">Samedi</div>
-          <div class="day-header">Dimanche</div>
 
           <div class="time-label">8h35</div>
           <button class="slot" data-day="Lundi" data-time="8h35" type="button"></button>
@@ -78,8 +85,6 @@ $teacherNames = fetchTeacherNames($pdo);
           <button class="slot" data-day="Mercredi" data-time="8h35" type="button"></button>
           <button class="slot" data-day="Jeudi" data-time="8h35" type="button"></button>
           <button class="slot" data-day="Vendredi" data-time="8h35" type="button"></button>
-          <button class="slot" data-day="Samedi" data-time="8h35" type="button"></button>
-          <button class="slot" data-day="Dimanche" data-time="8h35" type="button"></button>
 
           <div class="time-label">9h35</div>
           <button class="slot" data-day="Lundi" data-time="9h35" type="button"></button>
@@ -87,8 +92,6 @@ $teacherNames = fetchTeacherNames($pdo);
           <button class="slot" data-day="Mercredi" data-time="9h35" type="button"></button>
           <button class="slot" data-day="Jeudi" data-time="9h35" type="button"></button>
           <button class="slot" data-day="Vendredi" data-time="9h35" type="button"></button>
-          <button class="slot" data-day="Samedi" data-time="9h35" type="button"></button>
-          <button class="slot" data-day="Dimanche" data-time="9h35" type="button"></button>
 
           <div class="time-label">10h45</div>
           <button class="slot" data-day="Lundi" data-time="10h45" type="button"></button>
@@ -96,8 +99,6 @@ $teacherNames = fetchTeacherNames($pdo);
           <button class="slot" data-day="Mercredi" data-time="10h45" type="button"></button>
           <button class="slot" data-day="Jeudi" data-time="10h45" type="button"></button>
           <button class="slot" data-day="Vendredi" data-time="10h45" type="button"></button>
-          <button class="slot" data-day="Samedi" data-time="10h45" type="button"></button>
-          <button class="slot" data-day="Dimanche" data-time="10h45" type="button"></button>
 
           <div class="time-label">11h45</div>
           <button class="slot" data-day="Lundi" data-time="11h45" type="button"></button>
@@ -105,8 +106,6 @@ $teacherNames = fetchTeacherNames($pdo);
           <button class="slot" data-day="Mercredi" data-time="11h45" type="button"></button>
           <button class="slot" data-day="Jeudi" data-time="11h45" type="button"></button>
           <button class="slot" data-day="Vendredi" data-time="11h45" type="button"></button>
-          <button class="slot" data-day="Samedi" data-time="11h45" type="button"></button>
-          <button class="slot" data-day="Dimanche" data-time="11h45" type="button"></button>
 
           <div class="time-label">13h15</div>
           <button class="slot" data-day="Lundi" data-time="13h15" type="button"></button>
@@ -114,8 +113,6 @@ $teacherNames = fetchTeacherNames($pdo);
           <button class="slot" data-day="Mercredi" data-time="13h15" type="button"></button>
           <button class="slot" data-day="Jeudi" data-time="13h15" type="button"></button>
           <button class="slot" data-day="Vendredi" data-time="13h15" type="button"></button>
-          <button class="slot" data-day="Samedi" data-time="13h15" type="button"></button>
-          <button class="slot" data-day="Dimanche" data-time="13h15" type="button"></button>
 
           <div class="time-label">14h15</div>
           <button class="slot" data-day="Lundi" data-time="14h15" type="button"></button>
@@ -123,8 +120,6 @@ $teacherNames = fetchTeacherNames($pdo);
           <button class="slot" data-day="Mercredi" data-time="14h15" type="button"></button>
           <button class="slot" data-day="Jeudi" data-time="14h15" type="button"></button>
           <button class="slot" data-day="Vendredi" data-time="14h15" type="button"></button>
-          <button class="slot" data-day="Samedi" data-time="14h15" type="button"></button>
-          <button class="slot" data-day="Dimanche" data-time="14h15" type="button"></button>
 
           <div class="time-label">15h25</div>
           <button class="slot" data-day="Lundi" data-time="15h25" type="button"></button>
@@ -132,8 +127,6 @@ $teacherNames = fetchTeacherNames($pdo);
           <button class="slot" data-day="Mercredi" data-time="15h25" type="button"></button>
           <button class="slot" data-day="Jeudi" data-time="15h25" type="button"></button>
           <button class="slot" data-day="Vendredi" data-time="15h25" type="button"></button>
-          <button class="slot" data-day="Samedi" data-time="15h25" type="button"></button>
-          <button class="slot" data-day="Dimanche" data-time="15h25" type="button"></button>
 
           <div class="time-label">16h25</div>
           <button class="slot" data-day="Lundi" data-time="16h25" type="button"></button>
@@ -141,8 +134,6 @@ $teacherNames = fetchTeacherNames($pdo);
           <button class="slot" data-day="Mercredi" data-time="16h25" type="button"></button>
           <button class="slot" data-day="Jeudi" data-time="16h25" type="button"></button>
           <button class="slot" data-day="Vendredi" data-time="16h25" type="button"></button>
-          <button class="slot" data-day="Samedi" data-time="16h25" type="button"></button>
-          <button class="slot" data-day="Dimanche" data-time="16h25" type="button"></button>
 
           <div class="time-label">17h20</div>
           <button class="slot" data-day="Lundi" data-time="17h20" type="button"></button>
@@ -150,8 +141,6 @@ $teacherNames = fetchTeacherNames($pdo);
           <button class="slot" data-day="Mercredi" data-time="17h20" type="button"></button>
           <button class="slot" data-day="Jeudi" data-time="17h20" type="button"></button>
           <button class="slot" data-day="Vendredi" data-time="17h20" type="button"></button>
-          <button class="slot" data-day="Samedi" data-time="17h20" type="button"></button>
-          <button class="slot" data-day="Dimanche" data-time="17h20" type="button"></button>
         </div>
       </section>
 
@@ -175,10 +164,20 @@ $teacherNames = fetchTeacherNames($pdo);
     </div>
   </main>
 
+  <div class="modal-overlay" id="cancelModal">
+    <div class="modal-box">
+      <h2>Annuler la réservation</h2>
+      <p class="cancel-info" id="cancelSlotInfo"></p>
+      <div class="modal-actions">
+        <button type="button" class="modal-btn cancel-btn" id="cancelModalClose">Retour</button>
+        <button type="button" class="modal-btn confirm-btn danger-btn" id="confirmCancelBtn">Supprimer</button>
+      </div>
+    </div>
+  </div>
+
   <div class="modal-overlay" id="reservationModal">
     <div class="modal-box">
       <h2>Nouvelle réservation</h2>
-
       <p class="modal-info" id="selectedSlotInfo">Créneau sélectionné :</p>
 
       <div class="modal-group">
@@ -213,370 +212,439 @@ $teacherNames = fetchTeacherNames($pdo);
     </div>
   </div>
 
+  <div class="toast-container" id="toastContainer"></div>
+
   <script>
     const CURRENT_ROLE = <?php echo (int)$currentRole; ?>;
     const CURRENT_LOGIN = <?php echo json_encode($currentLogin, JSON_UNESCAPED_UNICODE); ?>;
-    const RESOURCE_ID = 3;
+    const RESOURCE_ID   = 3;
     const RESOURCE_NAME = "Classe mobile";
     const APPROVED_RESERVATIONS = <?php echo json_encode($approvedReservations, JSON_UNESCAPED_UNICODE); ?>;
 
-    const slots = Array.from(document.querySelectorAll(".slot"));
-    const agendaGrid = document.querySelector(".agenda-grid");
-    const dayHeaders = Array.from(document.querySelectorAll(".agenda-grid .day-header"));
-    const historyList = document.getElementById("historyList");
-    const historyEmpty = document.getElementById("historyEmpty");
+    const agendaGrid      = document.getElementById("agendaGrid");
+    const historyList     = document.getElementById("historyList");
+    const historyEmpty    = document.getElementById("historyEmpty");
     const historyToggleBtn = document.getElementById("historyToggleBtn");
-    const legendList = document.getElementById("legendList");
-    const weekRangeLabel = document.getElementById("weekRangeLabel");
-    const prevWeekBtn = document.getElementById("prevWeekBtn");
-    const nextWeekBtn = document.getElementById("nextWeekBtn");
-
-    const reservationModal = document.getElementById("reservationModal");
-    const selectedSlotInfo = document.getElementById("selectedSlotInfo");
-    const teacherNameInput = document.getElementById("teacherName");
-    const durationSelect = document.getElementById("durationSelect");
-    const cancelReservation = document.getElementById("cancelReservation");
+    const legendList      = document.getElementById("legendList");
+    const weekRangeLabel  = document.getElementById("weekRangeLabel");
+    const prevWeekBtn     = document.getElementById("prevWeekBtn");
+    const nextWeekBtn     = document.getElementById("nextWeekBtn");
+    const todayBtn        = document.getElementById("todayBtn");
+    const reservationModal  = document.getElementById("reservationModal");
+    const selectedSlotInfo  = document.getElementById("selectedSlotInfo");
+    const teacherNameInput  = document.getElementById("teacherName");
+    const durationSelect    = document.getElementById("durationSelect");
+    const cancelReservation  = document.getElementById("cancelReservation");
     const confirmReservation = document.getElementById("confirmReservation");
-    const isProf = CURRENT_ROLE === 3;
+    const toastContainer    = document.getElementById("toastContainer");
+    const dateJumpPopover   = document.getElementById("dateJumpPopover");
+    const cancelModal       = document.getElementById("cancelModal");
+    const cancelSlotInfo    = document.getElementById("cancelSlotInfo");
+    const cancelModalClose  = document.getElementById("cancelModalClose");
+    const confirmCancelBtn  = document.getElementById("confirmCancelBtn");
 
-    const times = ["8h35", "9h35", "10h45", "11h45", "13h15", "14h15", "15h25", "16h25", "17h20"];
+    const times = ["8h35","9h35","10h45","11h45","13h15","14h15","15h25","16h25","17h20"];
     const teacherColors = {};
-    const colorPalette = ["#e74c3c", "#3498db", "#27ae60", "#f39c12", "#9b59b6", "#1abc9c", "#e67e22", "#2ecc71", "#34495e", "#d35400", "#8e44ad", "#16a085"];
+    const colorPalette = ["#e74c3c","#3498db","#27ae60","#f39c12","#9b59b6","#1abc9c","#e67e22","#2ecc71","#34495e","#d35400","#8e44ad","#16a085"];
+    const isProf  = CURRENT_ROLE === 3;
+    const isAdmin = [1, 4].includes(CURRENT_ROLE);
 
+    let cancelModalReservationId = null;
     let colorIndex = 0;
     let selectedSlot = null;
     let currentWeekOffset = 0;
+    let calYear  = new Date().getFullYear();
+    let calMonth = new Date().getMonth();
     let weekDays = [];
     let weekDayLabelByIso = {};
     let historyLoaded = false;
     let historyExpanded = false;
 
-    function updateSelectedSlotInfoText() {
-      if (!selectedSlot || !selectedSlotInfo || !durationSelect) return;
-      const dayLabel = selectedSlot.dataset.dayLabel || selectedSlot.dataset.day;
-      const durationValue = parseInt(durationSelect.value, 10);
-      if (durationValue === times.length) {
-        selectedSlotInfo.textContent = `Créneau sélectionné : ${dayLabel} de ${times[0]} à ${times[times.length - 1]}`;
-      } else {
-        selectedSlotInfo.textContent = `Créneau sélectionné : ${dayLabel} à ${selectedSlot.dataset.time}`;
-      }
+    // ── Toast ───────────────────────────────────────
+    function showToast(message, type = "info") {
+      const t = document.createElement("div");
+      t.className = `toast toast-${type}`;
+      t.textContent = message;
+      toastContainer.appendChild(t);
+      requestAnimationFrame(() => requestAnimationFrame(() => t.classList.add("toast-show")));
+      setTimeout(() => { t.classList.remove("toast-show"); setTimeout(() => t.remove(), 250); }, 3500);
     }
 
-    function pad2(value) {
-      return String(value).padStart(2, "0");
-    }
+    // ── Helpers ─────────────────────────────────────
+    function pad2(v) { return String(v).padStart(2, "0"); }
 
-    function buildWeekDays(weekOffset = 0) {
-      const names = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi"];
-      const now = new Date();
-      const mondayOffset = (now.getDay() + 6) % 7;
-      const monday = new Date(now);
-      monday.setHours(0, 0, 0, 0);
-      monday.setDate(now.getDate() - mondayOffset + (weekOffset * 7));
-
-      return names.map((name, index) => {
-        const d = new Date(monday);
-        d.setDate(monday.getDate() + index);
-        const iso = `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
-        const display = `${name} ${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}`;
-        return { iso, display, date: d };
-      });
-    }
-
-    function displayDayLabel(dayValue) {
-      if (weekDayLabelByIso[dayValue]) {
-        return weekDayLabelByIso[dayValue];
-      }
-      if (/^\d{4}-\d{2}-\d{2}$/.test(dayValue)) {
-        const parts = dayValue.split("-");
-        return `${parts[2]}/${parts[1]}`;
-      }
-      return dayValue;
+    function todayISO() {
+      const d = new Date();
+      return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
     }
 
     function isPastDay(dayKey) {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(dayKey)) return false;
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const dayDate = new Date(`${dayKey}T00:00:00`);
-      return dayDate < today;
+      const t = new Date(); t.setHours(0,0,0,0);
+      return new Date(`${dayKey}T00:00:00`) < t;
+    }
+
+    function displayDayLabel(v) {
+      if (weekDayLabelByIso[v]) return weekDayLabelByIso[v];
+      if (/^\d{4}-\d{2}-\d{2}$/.test(v)) { const [,m,d]=v.split("-"); return `${d}/${m}`; }
+      return v;
+    }
+
+    // ── Semaine ─────────────────────────────────────
+    function buildWeekDays(offset=0) {
+      const names = ["Lundi","Mardi","Mercredi","Jeudi","Vendredi"];
+      const now = new Date();
+      const monday = new Date(now);
+      monday.setHours(0,0,0,0);
+      monday.setDate(now.getDate() - (now.getDay()+6)%7 + offset*7);
+      return names.map((name, i) => {
+        const d = new Date(monday); d.setDate(monday.getDate()+i);
+        const iso = `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
+        return { iso, display:`${name} ${pad2(d.getDate())}/${pad2(d.getMonth()+1)}`, date:d };
+      });
     }
 
     function updateWeekRangeLabel() {
-      if (!weekRangeLabel || weekDays.length === 0) return;
+      if (!weekDays.length) return;
       const first = weekDays[0].display.split(" ")[1];
-      const last = weekDays[weekDays.length - 1].display.split(" ")[1];
+      const last  = weekDays[weekDays.length-1].display.split(" ")[1];
       weekRangeLabel.textContent = `Semaine du ${first} au ${last}`;
     }
 
+    // ── Layout calendrier ───────────────────────────
     function applyCalendarLayout() {
-      dayHeaders.forEach((header, index) => {
-        if (index < weekDays.length) {
-          header.textContent = weekDays[index].display;
-        } else {
-          header.remove();
-        }
+      const headers = Array.from(agendaGrid.querySelectorAll(".day-header"));
+      headers.forEach((h, i) => {
+        if (i < weekDays.length) h.textContent = weekDays[i].display;
+        else h.remove();
       });
-
-      times.forEach((time) => {
-        const rowSlots = Array.from(document.querySelectorAll(`.agenda-grid .slot[data-time="${time}"]`));
-        rowSlots.forEach((slot, index) => {
-          if (index < weekDays.length) {
-            slot.dataset.day = weekDays[index].iso;
-            slot.dataset.dayLabel = weekDays[index].display;
-          } else {
-            slot.remove();
-          }
+      times.forEach(time => {
+        const rowSlots = Array.from(agendaGrid.querySelectorAll(`.slot[data-time="${time}"]`));
+        rowSlots.forEach((s, i) => {
+          if (i < weekDays.length) { s.dataset.day = weekDays[i].iso; s.dataset.dayLabel = weekDays[i].display; }
+          else s.remove();
         });
       });
-
-      if (agendaGrid) {
-        agendaGrid.style.gridTemplateColumns = "90px repeat(5, 1fr)";
-      }
     }
 
-    function getTeacherColor(teacherName) {
-      if (!teacherColors[teacherName]) {
-        teacherColors[teacherName] = colorPalette[colorIndex % colorPalette.length];
-        colorIndex++;
-      }
-      return teacherColors[teacherName];
+    // ── États aujourd'hui / passé ───────────────────
+    function applyDayStates() {
+      const today = todayISO();
+      agendaGrid.querySelectorAll(".day-header").forEach((h, i) => {
+        h.classList.toggle("today", i < weekDays.length && weekDays[i].iso === today);
+      });
+      agendaGrid.querySelectorAll(".slot").forEach(s => {
+        const past = isPastDay(s.dataset.day);
+        s.classList.toggle("past", past);
+        if (s.classList.contains("reserved")) {
+          s.disabled = !isAdmin;
+        } else {
+          s.disabled = past;
+        }
+      });
+      if (todayBtn) todayBtn.disabled = currentWeekOffset === 0;
+    }
+
+    // ── Couleurs ────────────────────────────────────
+    function getTeacherColor(name) {
+      if (!teacherColors[name]) { teacherColors[name] = colorPalette[colorIndex % colorPalette.length]; colorIndex++; }
+      return teacherColors[name];
     }
 
     function renderLegend(activeNames = null) {
       const names = Array.isArray(activeNames) ? activeNames : Object.keys(teacherColors);
-      if (names.length === 0) {
-        legendList.innerHTML = '<p class="legend-empty">Aucun professeur enregistré.</p>';
-        return;
-      }
+      if (!names.length) { legendList.innerHTML='<p class="legend-empty">Aucun professeur enregistré.</p>'; return; }
       legendList.innerHTML = "";
       names.forEach(name => {
-        const item = document.createElement("div");
-        item.className = "legend-item";
-        item.innerHTML = `<span class="legend-color" style="background-color: ${teacherColors[name]};"></span><span class="legend-name">${name}</span>`;
+        const item = document.createElement("div"); item.className = "legend-item";
+        item.innerHTML = `<span class="legend-color" style="background:${teacherColors[name]}"></span><span class="legend-name">${name}</span>`;
         legendList.appendChild(item);
       });
     }
 
+    // ── Réservations agenda ─────────────────────────
     function clearAgendaReservations() {
-      slots.forEach((slot) => {
-        slot.classList.remove("reserved");
-        slot.style.backgroundColor = "";
-        slot.style.color = "";
-        slot.textContent = "";
+      agendaGrid.querySelectorAll(".slot").forEach(s => {
+        s.classList.remove("reserved");
+        s.style.backgroundColor = ""; s.style.color = "";
+        s.innerHTML = ""; s.title = ""; s.disabled = false;
+        delete s.dataset.reservationId;
       });
     }
 
-    function markReservation(dayKey, startTime, duration, teacherName) {
-      const startIndex = times.indexOf(startTime);
-      if (startIndex < 0) return;
-      const endIndex = startIndex + duration - 1;
-      const daySlots = [...document.querySelectorAll(`.slot[data-day="${dayKey}"]`)];
-      const teacherColor = getTeacherColor(teacherName);
+    function markReservation(dayKey, startTime, duration, teacherName, reservationId = null) {
+      const si = times.indexOf(startTime);
+      if (si < 0) return;
+      const ei      = Math.min(si+duration-1, times.length-1);
+      const color   = getTeacherColor(teacherName);
+      const daySlots = Array.from(agendaGrid.querySelectorAll(`.slot[data-day="${dayKey}"]`));
+      const short   = teacherName.length > 13 ? teacherName.substring(0,12)+"…" : teacherName;
+      const endTime = times[ei];
 
-      for (let i = startIndex; i <= endIndex; i++) {
-        const slot = daySlots[i];
-        if (!slot) continue;
-        slot.classList.add("reserved");
-        slot.style.backgroundColor = teacherColor;
-        slot.style.color = "#fff";
-        slot.textContent = i === startIndex ? teacherName : "";
+      for (let i = si; i <= ei; i++) {
+        const s = daySlots[i]; if (!s) continue;
+        s.classList.add("reserved");
+        s.style.backgroundColor = color; s.style.color = "#fff";
+        s.disabled = !isAdmin;
+        s.title = `${teacherName} — ${startTime} à ${endTime} (${duration}h)`;
+        if (reservationId) s.dataset.reservationId = reservationId;
+        s.innerHTML = i === si
+          ? `<span class="slot-name">${short}</span><span class="slot-duration">${startTime}–${endTime}</span>`
+          : `<span class="slot-continuation">↕</span>`;
       }
     }
 
-    function appendHistory(dayLabel, startTime, duration, teacherName, statusText, isRequest = false) {
-      const startIndex = times.indexOf(startTime);
-      const endTime = startIndex >= 0 && startIndex + duration - 1 < times.length ? times[startIndex + duration - 1] : startTime;
+    function renderApprovedReservationsForWeek() {
+      clearAgendaReservations();
+      const active = new Set();
+      if (!Array.isArray(APPROVED_RESERVATIONS)) { renderLegend([]); return; }
+      APPROVED_RESERVATIONS.forEach(r => {
+        if (!weekDayLabelByIso[r.day]) return;
+        const teacher = r.demandeur || "Utilisateur";
+        markReservation(r.day, r.heure_debut||"", Number(r.duree||1), teacher, r.id || null);
+        if (!isPastDay(r.day)) active.add(teacher);
+      });
+      renderLegend(Array.from(active));
+      applyDayStates();
+    }
+
+    // ── Historique ──────────────────────────────────
+    function appendHistory(dayLabel, startTime, duration, teacherName, statusText, isRequest=false) {
+      const si = times.indexOf(startTime);
+      const endTime = si >= 0 && si+duration-1 < times.length ? times[si+duration-1] : startTime;
       if (historyEmpty) historyEmpty.remove();
-      const item = document.createElement("div");
-      item.className = "history-item";
-      const actionText = isRequest ? `Demande de réservation ${RESOURCE_NAME}` : `${RESOURCE_NAME} réservé`;
-      item.innerHTML = `<strong>${dayLabel}</strong><span>${actionText} de ${startTime} à ${endTime}</span><span>Professeur : ${teacherName}</span><span>Durée : ${duration} heure(s)</span><span>Statut : ${statusText}</span>`;
+      const item = document.createElement("div"); item.className = "history-item";
+      const action = isRequest ? `Demande de réservation ${RESOURCE_NAME}` : `${RESOURCE_NAME} réservé`;
+      item.innerHTML = `<strong>${dayLabel}</strong><span>${action} — ${startTime} à ${endTime}</span><span>Professeur : ${teacherName}</span><span>Durée : ${duration}h — ${statusText}</span>`;
       historyList.prepend(item);
       updateHistoryListCompact();
     }
 
     function updateHistoryListCompact() {
-      if (!historyList) return;
       const count = historyList.querySelectorAll(".history-item").length;
-      const shouldCompact = count > 2;
-
-      if (historyToggleBtn) {
-        historyToggleBtn.classList.toggle("hidden", !shouldCompact);
-        historyToggleBtn.textContent = historyExpanded ? "Voir moins" : "Voir plus";
-      }
-
-      historyList.classList.toggle("expanded", historyExpanded && shouldCompact);
-      historyList.classList.toggle("compact", !historyExpanded && shouldCompact);
-    }
-
-    function renderApprovedReservationsForWeek() {
-      clearAgendaReservations();
-      const activeTeacherNames = new Set();
-      if (!Array.isArray(APPROVED_RESERVATIONS)) { renderLegend([]); return; }
-      APPROVED_RESERVATIONS.forEach((reservation) => {
-        const dayKey = reservation.day || "";
-        if (!weekDayLabelByIso[dayKey]) return;
-        const duration = Number(reservation.duree || 1);
-        const teacher = reservation.demandeur || "Utilisateur";
-        markReservation(dayKey, reservation.heure_debut || "", duration, teacher);
-        if (!isPastDay(dayKey)) {
-          activeTeacherNames.add(teacher);
-        }
-      });
-      renderLegend(Array.from(activeTeacherNames));
+      const compact = count > 2;
+      if (historyToggleBtn) { historyToggleBtn.classList.toggle("hidden", !compact); historyToggleBtn.textContent = historyExpanded ? "Voir moins" : "Voir plus"; }
+      historyList.classList.toggle("expanded", historyExpanded && compact);
+      historyList.classList.toggle("compact", !historyExpanded && compact);
     }
 
     function loadHistoryOnce() {
       if (historyLoaded || !Array.isArray(APPROVED_RESERVATIONS)) return;
-      APPROVED_RESERVATIONS.forEach((reservation) => {
-        const dayKey = reservation.day || "";
-        const dayLabel = displayDayLabel(dayKey);
-        const duration = Number(reservation.duree || 1);
-        const teacher = reservation.demandeur || "Utilisateur";
-        appendHistory(dayLabel, reservation.heure_debut || "", duration, teacher, "Confirmée");
+      APPROVED_RESERVATIONS.forEach(r => {
+        appendHistory(displayDayLabel(r.day||""), r.heure_debut||"", Number(r.duree||1), r.demandeur||"Utilisateur", "Confirmée");
       });
       updateHistoryListCompact();
       historyLoaded = true;
     }
 
-    if (historyToggleBtn) {
-      historyToggleBtn.addEventListener("click", () => {
-        historyExpanded = !historyExpanded;
-        updateHistoryListCompact();
-      });
-    }
-
+    // ── Refresh ─────────────────────────────────────
     function refreshWeek() {
-      weekDays = buildWeekDays(currentWeekOffset);
-      weekDayLabelByIso = Object.fromEntries(weekDays.map((d) => [d.iso, d.display]));
+      weekDays         = buildWeekDays(currentWeekOffset);
+      weekDayLabelByIso = Object.fromEntries(weekDays.map(d => [d.iso, d.display]));
       updateWeekRangeLabel();
       applyCalendarLayout();
       renderApprovedReservationsForWeek();
     }
 
-    if (isProf && confirmReservation) {
-      confirmReservation.textContent = "Demander";
+    // ── Navigation ──────────────────────────────────
+    function isoToWeekOffset(iso) {
+      const target = new Date(`${iso}T00:00:00`);
+      const tMon = new Date(target);
+      tMon.setDate(target.getDate() - (target.getDay() + 6) % 7);
+      tMon.setHours(0, 0, 0, 0);
+      const now = new Date();
+      const nMon = new Date(now);
+      nMon.setDate(now.getDate() - (now.getDay() + 6) % 7);
+      nMon.setHours(0, 0, 0, 0);
+      return Math.round((tMon - nMon) / (7 * 24 * 60 * 60 * 1000));
     }
 
-    refreshWeek();
-    loadHistoryOnce();
+    prevWeekBtn.addEventListener("click", () => { currentWeekOffset--; selectedSlot=null; refreshWeek(); });
+    nextWeekBtn.addEventListener("click", () => { currentWeekOffset++; selectedSlot=null; refreshWeek(); });
+    todayBtn.addEventListener("click", () => { if (currentWeekOffset===0) return; currentWeekOffset=0; selectedSlot=null; refreshWeek(); });
 
-    if (prevWeekBtn) {
-      prevWeekBtn.addEventListener("click", () => {
-        currentWeekOffset -= 1;
-        selectedSlot = null;
-        refreshWeek();
+    function buildCalendar() {
+      const today = todayISO();
+      const wMon  = weekDays.length ? weekDays[0].iso : null;
+      const wFri  = weekDays.length ? weekDays[4].iso : null;
+      const first = new Date(calYear, calMonth, 1);
+      const days  = new Date(calYear, calMonth + 1, 0).getDate();
+      const start = (first.getDay() + 6) % 7;
+      const label = new Intl.DateTimeFormat("fr-FR", { month:"long", year:"numeric" }).format(first);
+      let h = `<div class="cal-header">
+        <button class="cal-nav" id="calPrev">‹</button>
+        <span class="cal-month-label">${label}</span>
+        <button class="cal-nav" id="calNext">›</button>
+      </div><div class="cal-grid">
+        <span class="cal-dow">L</span><span class="cal-dow">M</span><span class="cal-dow">M</span>
+        <span class="cal-dow">J</span><span class="cal-dow">V</span><span class="cal-dow">S</span>
+        <span class="cal-dow">D</span>`;
+      for (let i = 0; i < start; i++) h += `<span class="cal-empty"></span>`;
+      for (let d = 1; d <= days; d++) {
+        const iso = `${calYear}-${pad2(calMonth+1)}-${pad2(d)}`;
+        const dow = new Date(`${iso}T00:00:00`).getDay();
+        let cls = "cal-day";
+        if (iso === today) cls += " cal-today";
+        if (wMon && iso >= wMon && iso <= wFri) cls += " cal-cur-week";
+        if (dow === 0 || dow === 6) cls += " cal-weekend";
+        h += `<button class="${cls}" data-iso="${iso}">${d}</button>`;
+      }
+      h += `</div>`;
+      dateJumpPopover.innerHTML = h;
+      dateJumpPopover.querySelector("#calPrev").addEventListener("click", e => {
+        e.stopPropagation(); if (--calMonth < 0) { calMonth=11; calYear--; } buildCalendar();
+      });
+      dateJumpPopover.querySelector("#calNext").addEventListener("click", e => {
+        e.stopPropagation(); if (++calMonth > 11) { calMonth=0; calYear++; } buildCalendar();
+      });
+      dateJumpPopover.querySelectorAll(".cal-day").forEach(btn => {
+        btn.addEventListener("click", e => {
+          e.stopPropagation();
+          currentWeekOffset = isoToWeekOffset(btn.dataset.iso);
+          selectedSlot = null; refreshWeek();
+          dateJumpPopover.classList.remove("open");
+        });
       });
     }
 
-    if (nextWeekBtn) {
-      nextWeekBtn.addEventListener("click", () => {
-        currentWeekOffset += 1;
-        selectedSlot = null;
-        refreshWeek();
-      });
+    weekRangeLabel.addEventListener("click", e => {
+      e.stopPropagation();
+      if (weekDays.length) { const d = new Date(weekDays[0].iso+"T00:00:00"); calYear=d.getFullYear(); calMonth=d.getMonth(); }
+      buildCalendar();
+      const rect = weekRangeLabel.getBoundingClientRect();
+      dateJumpPopover.style.top  = (rect.bottom + 6) + "px";
+      dateJumpPopover.style.left = rect.left + "px";
+      dateJumpPopover.classList.toggle("open");
+    });
+    document.addEventListener("click", e => {
+      if (!dateJumpPopover.contains(e.target) && e.target !== weekRangeLabel)
+        dateJumpPopover.classList.remove("open");
+    });
+
+    if (isProf && confirmReservation) confirmReservation.textContent = "Demander";
+
+    // ── Clic créneau ────────────────────────────────
+    function updateSelectedSlotInfoText() {
+      if (!selectedSlot || !selectedSlotInfo) return;
+      const dayLabel = selectedSlot.dataset.dayLabel || selectedSlot.dataset.day;
+      const dur = parseInt(durationSelect.value, 10);
+      selectedSlotInfo.textContent = dur === times.length
+        ? `${dayLabel} — journée entière`
+        : `${dayLabel} à ${selectedSlot.dataset.time}`;
     }
 
-    slots.forEach(slot => {
-      slot.addEventListener("click", () => {
-        if (slot.classList.contains("reserved")) {
-          alert("Ce créneau est déjà réservé.");
-          return;
+    agendaGrid.addEventListener("click", e => {
+      const slot = e.target.closest(".slot");
+      if (!slot) return;
+      if (slot.classList.contains("reserved")) {
+        if (isAdmin && slot.dataset.reservationId) {
+          cancelSlotInfo.textContent = slot.title || "Cette réservation";
+          cancelModalReservationId = parseInt(slot.dataset.reservationId, 10);
+          cancelModal.classList.add("active");
+        } else {
+          showToast(`Déjà réservé : ${slot.title || "créneau pris"}`, "error");
         }
-        selectedSlot = slot;
-        teacherNameInput.value = "";
-        durationSelect.value = "1";
-        updateSelectedSlotInfoText();
-        reservationModal.classList.add("active");
-      });
+        return;
+      }
+      if (slot.classList.contains("past") || slot.disabled) return;
+
+      agendaGrid.querySelectorAll(".slot.selected").forEach(s => s.classList.remove("selected"));
+      slot.classList.add("selected");
+      selectedSlot = slot;
+      teacherNameInput.value = ""; durationSelect.value = "1";
+      updateSelectedSlotInfoText();
+      reservationModal.classList.add("active");
     });
 
-    if (durationSelect) {
-      durationSelect.addEventListener("change", updateSelectedSlotInfoText);
+    durationSelect.addEventListener("change", updateSelectedSlotInfoText);
+
+    // ── Modale ──────────────────────────────────────
+    function closeModal() {
+      reservationModal.classList.remove("active");
+      if (selectedSlot) { selectedSlot.classList.remove("selected"); selectedSlot = null; }
     }
 
-    cancelReservation.addEventListener("click", () => {
-      reservationModal.classList.remove("active");
-      selectedSlot = null;
-    });
+    cancelReservation.addEventListener("click", closeModal);
+    reservationModal.addEventListener("click", e => { if (e.target === reservationModal) closeModal(); });
 
     confirmReservation.addEventListener("click", async () => {
       if (!selectedSlot) return;
+      const teacherName  = teacherNameInput.value.trim();
+      const duration     = parseInt(durationSelect.value, 10);
+      const dayKey       = selectedSlot.dataset.day;
+      const dayLabel     = selectedSlot.dataset.dayLabel || dayKey;
+      const startTime    = selectedSlot.dataset.time;
+      const isFullDay    = duration === 9;
+      const effStart     = isFullDay ? times[0] : startTime;
+      const effDuration  = isFullDay ? times.length : duration;
+      const startIndex   = times.indexOf(effStart);
+      const endIndex     = startIndex + effDuration - 1;
 
-      const teacherName = (teacherNameInput.value || "").trim();
-      const duration = parseInt(durationSelect.value, 10);
-      const dayKey = selectedSlot.dataset.day;
-      const dayLabel = selectedSlot.dataset.dayLabel || dayKey;
-      const startTime = selectedSlot.dataset.time;
-      const isFullDay = duration === 9;
-      const effectiveStartTime = isFullDay ? times[0] : startTime;
-      const effectiveDuration = isFullDay ? times.length : duration;
-      const startIndex = times.indexOf(effectiveStartTime);
-      const endIndex = startIndex + effectiveDuration - 1;
-
-      if (startIndex < 0 || endIndex >= times.length) {
-        alert("La réservation dépasse la fin de la journée.");
-        return;
-      }
-      if (!teacherName) {
-        alert("Nom du professeur obligatoire.");
-        return;
-      }
+      if (startIndex < 0 || endIndex >= times.length) { showToast("La réservation dépasse la fin de la journée.", "error"); return; }
+      if (!teacherName) { showToast("Le nom du professeur est obligatoire.", "error"); return; }
 
       try {
         const response = await fetch("reservation_request.php", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ resource_id: RESOURCE_ID, day: dayKey, heure_debut: effectiveStartTime, duree: effectiveDuration, teacher_name: teacherName, full_day: isFullDay })
+          method:"POST", headers:{"Content-Type":"application/json"},
+          body: JSON.stringify({ resource_id:RESOURCE_ID, day:dayKey, heure_debut:effStart, duree:effDuration, teacher_name:teacherName, full_day:isFullDay })
         });
         const payload = await response.json();
         if (!response.ok || !payload.ok) {
-          alert(
-            payload.error === "slot_taken"
-              ? "Ce créneau est déjà réservé."
-              : (payload.error === "invalid_duration"
-                ? "Durée invalide pour ce créneau."
-                : (payload.error === "invalid_teacher"
-                  ? "Professeur invalide."
-                : (CURRENT_ROLE === 3 ? "Demande impossible. Merci de réessayer." : "Réservation impossible."))
-              )
-          );
-          return;
+          const msgs = { slot_taken:"Ce créneau est déjà réservé.", invalid_duration:"Durée invalide pour ce créneau.", invalid_teacher:"Professeur invalide." };
+          showToast(msgs[payload.error] || (isProf?"Demande impossible. Merci de réessayer.":"Réservation impossible."), "error"); return;
         }
-
-        if (CURRENT_ROLE === 3) {
-          appendHistory(dayLabel, effectiveStartTime, effectiveDuration, teacherName, "En attente de confirmation", true);
-          alert("Demande envoyée. En attente de confirmation par l'admin réservation.");
+        if (isProf) {
+          appendHistory(dayLabel, effStart, effDuration, teacherName, "En attente de confirmation", true);
+          showToast("Demande envoyée — en attente de confirmation.", "success");
         } else {
-          APPROVED_RESERVATIONS.push({ day: dayKey, heure_debut: effectiveStartTime, duree: effectiveDuration, demandeur: teacherName });
+          APPROVED_RESERVATIONS.push({ id: payload.id || null, day:dayKey, heure_debut:effStart, duree:effDuration, demandeur:teacherName });
           renderApprovedReservationsForWeek();
-          appendHistory(dayLabel, effectiveStartTime, effectiveDuration, teacherName, "Confirmée");
+          appendHistory(dayLabel, effStart, effDuration, teacherName, "Confirmée");
+          showToast("Réservation enregistrée.", "success");
         }
-
-        reservationModal.classList.remove("active");
-        selectedSlot = null;
-      } catch (error) {
-        alert("Erreur réseau. Merci de réessayer.");
+        closeModal();
+      } catch(err) {
+        showToast("Erreur réseau. Merci de réessayer.", "error");
       }
     });
 
-    reservationModal.addEventListener("click", (e) => {
-      if (e.target === reservationModal) {
-        reservationModal.classList.remove("active");
-        selectedSlot = null;
+    // ── Modale annulation ───────────────────────────
+    cancelModalClose.addEventListener("click", () => cancelModal.classList.remove("active"));
+    cancelModal.addEventListener("click", e => { if (e.target === cancelModal) cancelModal.classList.remove("active"); });
+
+    confirmCancelBtn.addEventListener("click", async () => {
+      if (!cancelModalReservationId) return;
+      try {
+        const res = await fetch("reservation_request.php", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "cancel", reservation_id: cancelModalReservationId })
+        });
+        const payload = await res.json();
+        cancelModal.classList.remove("active");
+        if (!res.ok || !payload.ok) {
+          showToast("Impossible d'annuler cette réservation.", "error");
+          return;
+        }
+        const idx = APPROVED_RESERVATIONS.findIndex(r => r.id === cancelModalReservationId);
+        if (idx !== -1) APPROVED_RESERVATIONS.splice(idx, 1);
+        cancelModalReservationId = null;
+        renderApprovedReservationsForWeek();
+        showToast("Réservation annulée.", "success");
+      } catch {
+        showToast("Erreur réseau. Merci de réessayer.", "error");
       }
+    });
+
+    // ── Init ────────────────────────────────────────
+    refreshWeek();
+    loadHistoryOnce();
+
+    historyToggleBtn.addEventListener("click", () => {
+      historyExpanded = !historyExpanded;
+      updateHistoryListCompact();
     });
   </script>
 
 </body>
 </html>
-
-
-
-
-
-
-
-
-
