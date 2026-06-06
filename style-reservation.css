@@ -129,6 +129,47 @@ body {
   background: #f0f0f0;
 }
 
+.teacher-autocomplete {
+  position: relative;
+}
+
+.teacher-autocomplete-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  background: #fff;
+  border: 1px solid #d9d9d9;
+  border-radius: 14px;
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.12);
+  max-height: 220px;
+  overflow-y: auto;
+  z-index: 30;
+  padding: 6px;
+}
+
+.teacher-autocomplete-menu[hidden] {
+  display: none;
+}
+
+.teacher-autocomplete-item {
+  width: 100%;
+  border: none;
+  background: transparent;
+  text-align: left;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-family: inherit;
+  color: #111;
+  cursor: pointer;
+}
+
+.teacher-autocomplete-item:hover,
+.teacher-autocomplete-item.active {
+  background: #eaf6fa;
+}
+
 #search-results { display: none; }
 
 /* PAGE */

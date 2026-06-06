@@ -15,6 +15,28 @@ function redirectToLoginForDbIssue(): void
     exit();
 }
 
+function resolveModuleDisplayName(string $moduleName, int $moduleNumber, array $zoneNames = []): string
+{
+    $cleanName = trim($moduleName);
+    if ($cleanName === '') {
+        return 'Module ' . $moduleNumber;
+    }
+
+    $reservedNames = [];
+    foreach ($zoneNames as $zoneName) {
+        $normalizedZoneName = strtolower(trim((string)$zoneName));
+        if ($normalizedZoneName !== '') {
+            $reservedNames[$normalizedZoneName] = true;
+        }
+    }
+
+    if (isset($reservedNames[strtolower($cleanName)])) {
+        return 'Module ' . $moduleNumber;
+    }
+
+    return $cleanName;
+}
+
 $zoneCreateError = '';
 $showModal = false;
 
@@ -72,11 +94,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($zoneId > 0 && $resourceId > 0 && $newTitle !== '') {
             try {
                 $stmt = $pdo->prepare("
-                    UPDATE livre l
-                    INNER JOIN bloc b_livre ON b_livre.id = l.id_bloc
-                    INNER JOIN bloc b_zone ON b_zone.id_zone = b_livre.id_zone
                     SET l.titre = ?
-                    WHERE l.id = ? AND b_zone.genre = ?
+                    WHERE l.id = ? AND l.id_genre = ?
                 ");
                 $stmt->execute([$newTitle, $resourceId, $zoneId]);
 
@@ -105,16 +124,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             try {
                 $stmt = $pdo->prepare("
                     UPDATE livre l
-                    INNER JOIN bloc b_livre ON b_livre.id = l.id_bloc
-                    INNER JOIN bloc b_zone ON b_zone.id_zone = b_livre.id_zone
                     SET l.titre = ?,
                         l.auteur = ?,
                         l.categorie = ?,
                         l.cote = ?,
                         l.isbn = ?,
                         l.id_bloc = ?,
+                        l.id_genre = ?,
                         l.image = ?
-                    WHERE l.id = ? AND b_zone.genre = ?
+                    WHERE l.id = ? AND l.id_genre = ?
                 ");
                 $stmt->execute([
                     $title,
@@ -123,6 +141,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $cote !== '' ? $cote : null,
                     $isbn !== '' ? $isbn : null,
                     $blocId,
+                    $zoneId,
                     $image !== '' ? $image : null,
                     $resourceId,
                     $zoneId,
@@ -141,7 +160,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif ($action === 'add_resource_manual') {
         $zoneId = (int)($_POST['zone'] ?? 0);
         $moduleId = (int)($_POST['module_id'] ?? 0);
-        $blocIdInput = (int)($_POST['id_bloc'] ?? 0);
+        $sectionInput = trim((string)($_POST['section'] ?? ''));
         $title = trim($_POST['titre'] ?? '');
         $author = trim($_POST['auteur'] ?? '');
         $category = trim($_POST['categorie'] ?? '');
@@ -149,14 +168,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $cote = trim($_POST['cote'] ?? '');
         $isbn = preg_replace('/[-\s]/', '', (string)($_POST['isbn'] ?? ''));
 
-        if ($zoneId > 0 && $moduleId > 0 && $blocIdInput > 0 && $title !== '' && $author !== '' && $cote !== '') {
+        if ($zoneId > 0 && $moduleId > 0 && $sectionInput !== '' && $title !== '' && $author !== '' && $cote !== '') {
             try {
-                $blocStmt = $pdo->prepare('SELECT id FROM bloc WHERE id = ? AND id_zone = ? AND genre = ? LIMIT 1');
-                $blocStmt->execute([$blocIdInput, $moduleId, $zoneId]);
+                $blocStmt = $pdo->prepare('SELECT id FROM bloc WHERE id_zone = ? AND genre = ? AND section = ? LIMIT 1');
+                $blocStmt->execute([$moduleId, $zoneId, $sectionInput]);
                 $blocId = $blocStmt->fetchColumn();
                 if ($blocId === false) {
-                    header("Location: cdi.php?zone=$zoneId&error=resource_add");
-                    exit();
+                    $createBlocStmt = $pdo->prepare("
+                        INSERT INTO bloc (id_zone, section, alphabet_start, alphabet_end, genre)
+                        VALUES (?, ?, 'A', 'Z', ?)
+                    ");
+                    $createBlocStmt->execute([$moduleId, $sectionInput, $zoneId]);
+                    $blocId = (int)$pdo->lastInsertId();
                 }
 
                 $nextBookId = (int)$pdo->query('SELECT COALESCE(MAX(id), 0) + 1 FROM livre')->fetchColumn();
@@ -165,8 +188,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
 
                 $insertStmt = $pdo->prepare('
-                    INSERT INTO livre (id, titre, auteur, categorie, image, cote, isbn, etat, id_bloc)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?)
+                    INSERT INTO livre (id, titre, auteur, categorie, image, cote, isbn, etat, id_bloc, id_genre)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
                 ');
                 $insertStmt->execute([
                     $nextBookId,
@@ -177,6 +200,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $cote,
                     $isbn !== '' ? $isbn : null,
                     (int)$blocId,
+                    $zoneId,
                 ]);
 
                 header("Location: cdi.php?zone=$zoneId&success=resource_added");
@@ -196,11 +220,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($zoneId > 0 && $resourceId > 0) {
             try {
                 $stmt = $pdo->prepare("
-                    DELETE l
-                    FROM livre l
-                    INNER JOIN bloc b_livre ON b_livre.id = l.id_bloc
-                    INNER JOIN bloc b_zone ON b_zone.id_zone = b_livre.id_zone
-                    WHERE l.id = ? AND b_zone.genre = ?
+                    DELETE FROM livre
+                    WHERE id = ? AND id_genre = ?
                 ");
                 $stmt->execute([$resourceId, $zoneId]);
 
@@ -260,6 +281,7 @@ $zoneModules = [];
 $zoneModuleRows = [];
 $zoneModuleIds = [];
 $resourcesByModule = [];
+$moduleGenreSectionsMap = [];
 
 try {
     $zones = $pdo->query("
@@ -291,51 +313,108 @@ try {
     $hasCurrentZone = !empty($zoneInfo) && isset($zoneInfo['id_zone']);
 
     $stmtZoneModules = $pdo->prepare("
-        SELECT z.id AS id_module, z.ip_address, z.nom_module, b.id AS id_bloc
+        SELECT z.id AS id_module, z.ip_address, z.nom_module, b.id AS id_bloc, b.section
         FROM zone z
         INNER JOIN bloc b ON b.id_zone = z.id
         WHERE b.genre = ?
-        ORDER BY z.id ASC
+        ORDER BY z.id ASC, b.section ASC
     ");
     $stmtZoneModules->execute([$currentZoneId]);
     $zoneModules = $stmtZoneModules->fetchAll(PDO::FETCH_ASSOC);
 
+    $zoneNames = array_map(
+        static fn(array $zone): string => trim((string)($zone['nom_zone'] ?? '')),
+        $zones
+    );
     $moduleDisplayIndex = 0;
+    $groupedModuleRows = [];
     foreach ($zoneModules as $module) {
         $moduleId = trim((string)($module['id_module'] ?? ''));
         $moduleName = trim((string)($module['nom_module'] ?? ''));
+        $moduleSection = isset($module['section']) ? (int)$module['section'] : 0;
 
         if ($moduleId !== '') {
-            $moduleDisplayIndex++;
-            $zoneModuleRows[] = [
-                'id_module' => $moduleId,
-                'id_bloc' => isset($module['id_bloc']) ? (int)$module['id_bloc'] : 0,
-                'label' => $moduleName !== '' ? $moduleName : ('Module ' . $moduleDisplayIndex),
-            ];
-            $zoneModuleIds[] = $moduleId;
+            if (!isset($groupedModuleRows[$moduleId])) {
+                $moduleDisplayIndex++;
+                $moduleNumber = ctype_digit($moduleId) ? (int)$moduleId : $moduleDisplayIndex;
+                $groupedModuleRows[$moduleId] = [
+                    'id_module' => $moduleId,
+                    'id_bloc' => isset($module['id_bloc']) ? (int)$module['id_bloc'] : 0,
+                    'ip_address' => trim((string)($module['ip_address'] ?? '')),
+                    'label' => resolveModuleDisplayName($moduleName, $moduleNumber, $zoneNames),
+                    'sections' => [],
+                ];
+                $zoneModuleIds[] = $moduleId;
+            }
+
+            if ($moduleSection > 0 && !in_array($moduleSection, $groupedModuleRows[$moduleId]['sections'], true)) {
+                $groupedModuleRows[$moduleId]['sections'][] = $moduleSection;
+            }
         }
     }
+    $zoneModuleRows = array_values($groupedModuleRows);
+    foreach ($zoneModuleRows as &$moduleRow) {
+        sort($moduleRow['sections'], SORT_NATURAL);
+    }
+    unset($moduleRow);
 
     if (!empty($zoneModuleIds)) {
         $modulePlaceholders = implode(',', array_fill(0, count($zoneModuleIds), '?'));
-        $currentZoneName = trim((string)($zoneInfo['nom_zone'] ?? ''));
+        $stmtGenreSections = $pdo->prepare("
+            SELECT id_zone, genre, section
+            FROM bloc
+            WHERE id_zone IN ($modulePlaceholders)
+            ORDER BY id_zone ASC, genre ASC, section ASC
+        ");
+        $stmtGenreSections->execute($zoneModuleIds);
+        $moduleGenreSectionsRows = $stmtGenreSections->fetchAll(PDO::FETCH_ASSOC);
+
+        $moduleGenreSectionsMap = [];
+        foreach ($moduleGenreSectionsRows as $genreSectionRow) {
+            $mapModuleId = trim((string)($genreSectionRow['id_zone'] ?? ''));
+            $mapGenreId = isset($genreSectionRow['genre']) ? (int)$genreSectionRow['genre'] : 0;
+            $mapSection = trim((string)($genreSectionRow['section'] ?? ''));
+
+            if ($mapModuleId === '' || $mapGenreId <= 0 || $mapSection === '') {
+                continue;
+            }
+
+            if (!isset($moduleGenreSectionsMap[$mapModuleId])) {
+                $moduleGenreSectionsMap[$mapModuleId] = [];
+            }
+            if (!isset($moduleGenreSectionsMap[$mapModuleId][$mapGenreId])) {
+                $moduleGenreSectionsMap[$mapModuleId][$mapGenreId] = [];
+            }
+            if (!in_array($mapSection, $moduleGenreSectionsMap[$mapModuleId][$mapGenreId], true)) {
+                $moduleGenreSectionsMap[$mapModuleId][$mapGenreId][] = $mapSection;
+            }
+        }
+
         $stmtResByModule = $pdo->prepare("
-            SELECT z.id AS id_module, l.id, l.titre, l.auteur, l.categorie, l.cote, l.isbn, l.image, l.id_bloc
+            SELECT z.id AS id_module, l.id, l.titre, l.auteur, l.categorie, l.cote, l.isbn, l.image, l.id_bloc, l.id_genre
             FROM livre l
             INNER JOIN bloc b ON b.id = l.id_bloc
             INNER JOIN zone z ON z.id = b.id_zone
             WHERE z.id IN ($modulePlaceholders)
-              AND UPPER(TRIM(COALESCE(l.categorie, ''))) = UPPER(TRIM(?))
             ORDER BY z.id ASC, l.titre ASC
         ");
         $executeParams = $zoneModuleIds;
-        $executeParams[] = $currentZoneName;
         $stmtResByModule->execute($executeParams);
         $moduleResourcesRows = $stmtResByModule->fetchAll(PDO::FETCH_ASSOC);
 
         foreach ($moduleResourcesRows as $moduleResource) {
             $moduleKey = trim((string)($moduleResource['id_module'] ?? ''));
             if ($moduleKey === '') {
+                continue;
+            }
+
+            $resourceGenreId = isset($moduleResource['id_genre']) ? (int)$moduleResource['id_genre'] : 0;
+            $category = trim((string)($moduleResource['categorie'] ?? ''));
+            $belongsToCurrentZone = $resourceGenreId > 0
+                ? ($resourceGenreId === $currentZoneId)
+                : strcasecmp($category, trim((string)($zoneInfo['nom_zone'] ?? ''))) === 0;
+
+            if (!$belongsToCurrentZone) {
                 continue;
             }
 
@@ -353,6 +432,7 @@ try {
                 'isbn' => trim((string)($moduleResource['isbn'] ?? '')),
                 'image' => trim((string)($moduleResource['image'] ?? '')),
                 'id_bloc' => isset($moduleResource['id_bloc']) ? (int)$moduleResource['id_bloc'] : 0,
+                'id_genre' => $resourceGenreId,
             ];
         }
     }
@@ -583,12 +663,22 @@ $styleVersion = (string)(@filemtime(__DIR__ . '/style.css') ?: '1');
                                     <div class="esp-group-header">
                                         <div class="esp-module-actions">
                                             <div class="esp-module-name"><?php echo htmlspecialchars($moduleRow['label']); ?></div>
-                                            <button type="button" class="esp-led-btn">Allumer LED</button>
+                                            <button
+                                                type="button"
+                                                class="esp-led-btn"
+                                                data-module-id="<?php echo (int)$moduleRow['id_module']; ?>"
+                                                data-ip="<?php echo htmlspecialchars((string)$moduleRow['ip_address'], ENT_QUOTES); ?>"
+                                                data-sections="<?php echo htmlspecialchars(implode(',', array_values($moduleRow['sections'])), ENT_QUOTES); ?>"
+                                                <?php echo (empty($moduleRow['ip_address']) || empty($moduleRow['sections'])) ? 'disabled' : ''; ?>
+                                            >
+                                                Allumer LED
+                                            </button>
                                             <button
                                                 type="button"
                                                 class="esp-add-book-btn open-add-book-modal"
                                                 data-module-id="<?php echo (int)$moduleRow['id_module']; ?>"
                                                 data-bloc-id="<?php echo (int)$moduleRow['id_bloc']; ?>"
+                                                data-sections="<?php echo htmlspecialchars(json_encode(array_values($moduleRow['sections']), JSON_UNESCAPED_UNICODE), ENT_QUOTES); ?>"
                                                 data-module-name="<?php echo htmlspecialchars((string)$moduleRow['label'], ENT_QUOTES); ?>"
                                             >
                                                 Ajouter livre
@@ -624,6 +714,7 @@ $styleVersion = (string)(@filemtime(__DIR__ . '/style.css') ?: '1');
                                                                         data-resource-cote="<?php echo htmlspecialchars((string)($bookItem['cote'] ?? ''), ENT_QUOTES); ?>"
                                                                         data-resource-isbn="<?php echo htmlspecialchars((string)($bookItem['isbn'] ?? ''), ENT_QUOTES); ?>"
                                                                         data-resource-bloc="<?php echo (int)($bookItem['id_bloc'] ?? 0); ?>"
+                                                                        data-resource-genre="<?php echo (int)($bookItem['id_genre'] ?? 0); ?>"
                                                                     <?php endif; ?>
                                                                 >
                                                                     <?php if (is_array($bookItem)): ?>
@@ -808,9 +899,9 @@ $styleVersion = (string)(@filemtime(__DIR__ . '/style.css') ?: '1');
                 <input type="hidden" name="zone" value="<?php echo (int)$currentZoneId; ?>">
                 <input type="hidden" name="module_id" id="addBookModuleIdInput" value="">
 
-                <label for="addBookBlocIdInput">ID bloc</label>
-                <input id="addBookBlocIdInput" type="number" min="1" name="id_bloc" required placeholder="Ex: 6">
-                <small class="modal-subtext" id="addBookBlocHelp">Utilise l'ID bloc du module.</small>
+                <label for="addBookSectionInput">Section</label>
+                <input id="addBookSectionInput" type="number" min="1" name="section" required placeholder="Ex: 1">
+                <small class="modal-subtext" id="addBookSectionHelp">Choisis la section du module.</small>
 
                 <label for="addBookTitleInput">Titre</label>
                 <input id="addBookTitleInput" type="text" name="titre" required placeholder="Ex: Les Misérables">
@@ -844,6 +935,7 @@ $styleVersion = (string)(@filemtime(__DIR__ . '/style.css') ?: '1');
     </form>
 
     <script>
+        const moduleGenreSectionsMap = <?php echo json_encode($moduleGenreSectionsMap, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
         const modal = document.getElementById('modalZone');
         const modalEdit = document.getElementById('modalEdit');
         const modalEditBook = document.getElementById('modalEditBook');
@@ -987,8 +1079,8 @@ $styleVersion = (string)(@filemtime(__DIR__ . '/style.css') ?: '1');
 
         const addBookModalText = document.getElementById('addBookModalText');
         const addBookModuleIdInput = document.getElementById('addBookModuleIdInput');
-        const addBookBlocIdInput = document.getElementById('addBookBlocIdInput');
-        const addBookBlocHelp = document.getElementById('addBookBlocHelp');
+        const addBookSectionInput = document.getElementById('addBookSectionInput');
+        const addBookSectionHelp = document.getElementById('addBookSectionHelp');
         const addBookTitleInput = document.getElementById('addBookTitleInput');
         const addBookAuthorInput = document.getElementById('addBookAuthorInput');
         const addBookCategorieInput = document.getElementById('addBookCategorieInput');
@@ -999,19 +1091,20 @@ $styleVersion = (string)(@filemtime(__DIR__ . '/style.css') ?: '1');
         document.querySelectorAll('.open-add-book-modal').forEach((button) => {
             button.addEventListener('click', () => {
                 const moduleId = button.dataset.moduleId || '';
-                const blocId = button.dataset.blocId || '';
                 const moduleName = button.dataset.moduleName || 'ce module';
+                const sections = JSON.parse(button.dataset.sections || '[]');
+                const defaultSection = sections.length ? sections[0] : 1;
 
                 if (addBookModuleIdInput) {
                     addBookModuleIdInput.value = moduleId;
                 }
-                if (addBookBlocIdInput) {
-                    addBookBlocIdInput.value = blocId;
+                if (addBookSectionInput) {
+                    addBookSectionInput.value = defaultSection;
                 }
-                if (addBookBlocHelp) {
-                    addBookBlocHelp.textContent = blocId !== ''
-                        ? `ID bloc du module ${moduleName} : ${blocId}`
-                        : "Utilise l'ID bloc du module.";
+                if (addBookSectionHelp) {
+                    addBookSectionHelp.textContent = sections.length
+                        ? `Sections disponibles pour ${moduleName} : ${sections.join(', ')}`
+                        : `La section ${defaultSection} sera créée pour ${moduleName}.`;
                 }
                 if (addBookModalText) {
                     addBookModalText.textContent = `Ajout manuel dans ${moduleName}.`;
@@ -1203,6 +1296,71 @@ $styleVersion = (string)(@filemtime(__DIR__ . '/style.css') ?: '1');
                 });
             });
         }
+
+        document.querySelectorAll('.esp-led-btn').forEach((button) => {
+            button.addEventListener('click', () => {
+                const moduleId = button.dataset.moduleId || '';
+                const ip = button.dataset.ip || '';
+                const group = button.closest('.esp-group');
+                const resolvedSections = new Set();
+
+                if (group && moduleId !== '' && moduleGenreSectionsMap[moduleId]) {
+                    group.querySelectorAll('.selectable-book-cell[data-resource-genre]').forEach((cell) => {
+                        const genreId = cell.dataset.resourceGenre || '';
+                        if (!genreId || !moduleGenreSectionsMap[moduleId][genreId]) {
+                            return;
+                        }
+
+                        moduleGenreSectionsMap[moduleId][genreId].forEach((section) => {
+                            if (String(section).trim() !== '') {
+                                resolvedSections.add(String(section).trim());
+                            }
+                        });
+                    });
+                }
+
+                if (resolvedSections.size === 0) {
+                    (button.dataset.sections || '')
+                        .split(',')
+                        .map((section) => section.trim())
+                        .filter((section) => section !== '')
+                        .forEach((section) => resolvedSections.add(section));
+                }
+
+                const sections = Array.from(resolvedSections).sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true })).join(',');
+
+                if (!sections || !ip) {
+                    alert('Donnees manquantes pour allumer la LED.');
+                    return;
+                }
+
+                button.disabled = true;
+                const originalText = button.textContent;
+                button.textContent = 'Allumage...';
+
+                fetch(`allumer_module.php?section=${encodeURIComponent(sections)}&ip=${encodeURIComponent(ip)}`)
+                    .then((response) => response.json())
+                    .then((data) => {
+                        if (data.status === 'success') {
+                            button.textContent = 'LED allumee';
+                            window.setTimeout(() => {
+                                button.disabled = false;
+                                button.textContent = originalText;
+                            }, 5500);
+                            return;
+                        }
+
+                        button.disabled = false;
+                        button.textContent = originalText;
+                        alert(data.message || 'Erreur inconnue.');
+                    })
+                    .catch(() => {
+                        button.disabled = false;
+                        button.textContent = originalText;
+                        alert('Impossible de joindre le module.');
+                    });
+            });
+        });
     </script>
 </body>
 </html>

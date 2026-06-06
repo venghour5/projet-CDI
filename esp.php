@@ -16,6 +16,28 @@ ensureModuleSupervisionSchema($pdo);
 
 const OFFLINE_DELAY_SECONDS = 300;
 
+function resolveModuleDisplayName(string $moduleName, int $moduleNumber, array $zoneNames = []): string
+{
+    $cleanName = trim($moduleName);
+    if ($cleanName === '') {
+        return 'Module ' . $moduleNumber;
+    }
+
+    $reservedNames = [];
+    foreach ($zoneNames as $zoneName) {
+        $normalizedZoneName = strtolower(trim((string)$zoneName));
+        if ($normalizedZoneName !== '') {
+            $reservedNames[$normalizedZoneName] = true;
+        }
+    }
+
+    if (isset($reservedNames[strtolower($cleanName)])) {
+        return 'Module ' . $moduleNumber;
+    }
+
+    return $cleanName;
+}
+
 $feedbackMessage = '';
 $feedbackType = 'success';
 
@@ -46,7 +68,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $moduleId = (int)($_POST['module_id'] ?? 0);
             $zoneId   = (int)($_POST['zone_id'] ?? 0);
             if ($moduleId < 0 || $zoneId <= 0) {
-                throw new InvalidArgumentException('Paramètres invalides');
+                throw new InvalidArgumentException('Parametres invalides');
             }
             removeModuleZone($pdo, $moduleId, $zoneId);
             header('Location: esp.php?success=zone_removed');
@@ -72,7 +94,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $zoneIds = array_values(array_unique($zoneIds));
 
             if ($moduleId < 0 || empty($zoneIds)) {
-                throw new InvalidArgumentException('Paramètres invalides');
+                throw new InvalidArgumentException('Parametres invalides');
             }
 
             foreach ($zoneIds as $zoneId) {
@@ -91,7 +113,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             disconnectModuleZone($pdo, $moduleId);
-            logModuleActivity($pdo, $moduleId, 'Désassociation zone', null, true);
+            logModuleActivity($pdo, $moduleId, 'Desassociation zone', null, true);
 
             header('Location: esp.php?success=module_disconnected');
             exit();
@@ -123,47 +145,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-syncModuleHealthAlerts($pdo, OFFLINE_DELAY_SECONDS);
-
 $modules = fetchModulesOverview($pdo, OFFLINE_DELAY_SECONDS);
 $zones = $pdo->query('SELECT id AS id_zone, nom AS nom_zone FROM genre ORDER BY nom ASC')->fetchAll(PDO::FETCH_ASSOC);
 $summary = buildSupervisionSummary($pdo, OFFLINE_DELAY_SECONDS);
-
-$visibleAlertsCount = 0;
-foreach ($modules as &$module) {
-    $moduleAlerts = is_array($module['active_alerts'] ?? null) ? $module['active_alerts'] : [];
-    $module['active_alerts'] = array_values(array_filter(
-        $moduleAlerts,
-        static fn(array $alert): bool => (string)($alert['code'] ?? '') !== 'MODULE_UNREACHABLE'
-    ));
-    $visibleAlertsCount += count($module['active_alerts']);
-}
-unset($module);
-$summary['active_alerts'] = $visibleAlertsCount;
+$zoneNames = array_map(
+    static fn(array $zone): string => trim((string)($zone['nom_zone'] ?? '')),
+    $zones
+);
 
 if (isset($_GET['success'])) {
     $successCode = (string)$_GET['success'];
     if ($successCode === 'module_added') {
-        $feedbackMessage = 'Module ajouté avec succès.';
+        $feedbackMessage = 'Module ajoute avec succes.';
     } elseif ($successCode === 'module_assigned') {
-        $feedbackMessage = 'Module associé à la zone.';
+        $feedbackMessage = 'Module associe a la zone.';
     } elseif ($successCode === 'module_disconnected') {
-        $feedbackMessage = 'Module déconnecté de la zone.';
+        $feedbackMessage = 'Module deconnecte de la zone.';
     } elseif ($successCode === 'module_deleted') {
-        $feedbackMessage = 'Module supprimé avec succès.';
+        $feedbackMessage = 'Module supprime avec succes.';
     } elseif ($successCode === 'zone_removed') {
-        $feedbackMessage = 'Zone retirée du module.';
+        $feedbackMessage = 'Zone retiree du module.';
     }
 }
 
 if ($feedbackMessage === '' && isset($_GET['error'])) {
     $feedbackType = 'error';
     if ((string)$_GET['error'] === 'add_module' || (string)$_GET['error'] === 'delete_module') {
-        $feedbackMessage = 'Seul le Super Admin peut gérer les modules.';
+        $feedbackMessage = 'Seul le Super Admin peut gerer les modules.';
     } elseif ((string)$_GET['error'] === 'forbidden_delete_module') {
         $feedbackMessage = 'Seul le Super Admin peut supprimer un module.';
     } else {
-        $feedbackMessage = 'Opération impossible. Vérifie les données saisies.';
+        $feedbackMessage = 'Operation impossible. Verifie les donnees saisies.';
     }
 }
 
@@ -209,11 +221,11 @@ function formatSecondsAgo(?int $seconds): string
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css?v=<?php echo urlencode($styleVersion); ?>" />
     <style>
-        /* — Overrides taille texte cartes — */
+        /* Ã¢â‚¬â€ Overrides taille texte cartes Ã¢â‚¬â€ */
         .module-title { font-size: 17px !important; font-weight: 700 !important; margin-bottom: 3px !important; }
         .module-zone  { font-size: 13px !important; color: #555 !important; font-weight: 500 !important; }
 
-        /* — Cartes modules — */
+        /* Ã¢â‚¬â€ Cartes modules Ã¢â‚¬â€ */
         .esp-card {
             gap: 12px !important;
             min-height: 0 !important;
@@ -224,7 +236,7 @@ function formatSecondsAgo(?int $seconds): string
         }
         .esp-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.10) !important; }
 
-        /* — Carte Ajouter — */
+        /* Ã¢â‚¬â€ Carte Ajouter Ã¢â‚¬â€ */
         .esp-add-card {
             flex-direction: column !important;
             min-height: 0 !important;
@@ -238,7 +250,7 @@ function formatSecondsAgo(?int $seconds): string
         .esp-add-card:hover { background: rgba(136,198,214,0.08) !important; }
         .big-plus-btn { font-size: 36px !important; color: #88c6d6 !important; }
 
-        /* — Résumé haut de page — */
+        /* Ã¢â‚¬â€ RÃƒÂ©sumÃƒÂ© haut de page Ã¢â‚¬â€ */
         .esp-top-summary {
             display: grid;
             grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -255,7 +267,7 @@ function formatSecondsAgo(?int $seconds): string
         .summary-chip .value { display: block; font-size: 30px; font-weight: 800; margin-bottom: 4px; }
         .summary-chip .chip-label { font-size: 11px; font-weight: 600; color: #555; text-transform: uppercase; letter-spacing: 0.4px; }
 
-        /* — Feedback — */
+        /* Ã¢â‚¬â€ Feedback Ã¢â‚¬â€ */
         .esp-feedback {
             padding: 12px 16px;
             border-radius: 10px;
@@ -266,7 +278,7 @@ function formatSecondsAgo(?int $seconds): string
         .esp-feedback.success { background: #d4f5c1; color: #1a5c00; border-left: 3px solid #89ff57; }
         .esp-feedback.error   { background: #ffd7d7; color: #7c0000; border-left: 3px solid #ff4444; }
 
-        /* — Statut connexion — */
+        /* Ã¢â‚¬â€ Statut connexion Ã¢â‚¬â€ */
         .status-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
         .connection-pill {
             border-radius: 999px;
@@ -281,7 +293,7 @@ function formatSecondsAgo(?int $seconds): string
         .connection-pill.offline { background: #ff4444; color: #fff; }
         .signal-label { font-size: 12px; font-weight: 600; color: #555; }
 
-        /* — Meta infos — */
+        /* Ã¢â‚¬â€ Meta infos Ã¢â‚¬â€ */
         .module-meta {
             font-size: 13px;
             line-height: 1.6;
@@ -299,13 +311,8 @@ function formatSecondsAgo(?int $seconds): string
             padding: 2px 7px;
         }
 
-        /* — Alertes — */
-        .alert-list { list-style: none; display: flex; flex-direction: column; gap: 6px; }
-        .alert-item { font-size: 12px; font-weight: 600; border-radius: 7px; padding: 7px 10px; border-left: 3px solid #aaa; background: rgba(255,255,255,0.4); }
-        .alert-item.warning  { background: #fff8e1; border-left-color: #f0b400; color: #5a4000; }
-        .alert-item.critical { background: #ffe4e4; border-left-color: #ff4444; color: #7c0000; }
 
-        /* — Tags zones — */
+        /* Ã¢â‚¬â€ Tags zones Ã¢â‚¬â€ */
         .zone-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
         .zone-tag-form { display: inline-flex; margin: 0; }
         .zone-tag {
@@ -316,7 +323,7 @@ function formatSecondsAgo(?int $seconds): string
         }
         .zone-tag:hover { background: rgba(255,68,68,0.15); border-color: #ff9999; color: #7c0000; }
 
-        /* — Actions carte — */
+        /* Ã¢â‚¬â€ Actions carte Ã¢â‚¬â€ */
         .card-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
         .small-action-btn {
             border: none;
@@ -340,7 +347,7 @@ function formatSecondsAgo(?int $seconds): string
             flex-shrink: 0;
         }
 
-        /* — Modal — */
+        /* Ã¢â‚¬â€ Modal Ã¢â‚¬â€ */
         .esp-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: none; align-items: center; justify-content: center; z-index: 2200; }
         .esp-modal-overlay.active { display: flex; }
         .esp-modal { width: min(480px, 92vw); background: #fff; border-radius: 16px; padding: 24px; position: relative; box-shadow: 0 8px 32px rgba(0,0,0,0.14); }
@@ -369,7 +376,7 @@ function formatSecondsAgo(?int $seconds): string
             <div class="logo-lycee">
                 <a href="index.php">
                     <span class="logo-mark">CDI</span>
-                    CDI <span class="logo-separator">-</span> Lycée
+                    CDI <span class="logo-separator">-</span> Lycee
                 </a>
             </div>
 
@@ -405,19 +412,19 @@ function formatSecondsAgo(?int $seconds): string
             <article class="summary-chip"><span class="value"><?php echo (int)$summary['total_modules']; ?></span><span class="chip-label">Total modules</span></article>
             <article class="summary-chip"><span class="value"><?php echo (int)$summary['online_modules']; ?></span><span class="chip-label">En ligne</span></article>
             <article class="summary-chip"><span class="value"><?php echo (int)$summary['offline_modules']; ?></span><span class="chip-label">Hors ligne</span></article>
-            <article class="summary-chip"><span class="value"><?php echo (int)$summary['active_alerts']; ?></span><span class="chip-label">Alertes actives</span></article>
         </section>
 
         <div class="esp-grid">
             <?php foreach ($modules as $module):
-                $displayName = $module['nom_module'] !== null && $module['nom_module'] !== ''
-                    ? $module['nom_module']
-                    : 'ESP ' . ($module['ip_address'] !== '' ? $module['ip_address'] : $module['id']);
+                $displayName = resolveModuleDisplayName(
+                    (string)($module['nom_module'] ?? ''),
+                    (int)$module['id'],
+                    $zoneNames
+                );
                 $moduleZones = $module['zones'] ?? [];
                 $isAssigned = !empty($moduleZones);
                 $connectionClass = $module['is_online'] ? 'online' : 'offline';
-                $connectionText = $module['is_online'] ? 'Connecté' : 'Hors ligne';
-                $alerts = $module['active_alerts'];
+                $connectionText = $module['is_online'] ? 'Connecte' : 'Hors ligne';
             ?>
                 <article class="esp-card">
                     <div class="esp-card-top">
@@ -430,19 +437,19 @@ function formatSecondsAgo(?int $seconds): string
                                             <input type="hidden" name="action" value="remove_zone">
                                             <input type="hidden" name="module_id" value="<?php echo (int)$module['id']; ?>">
                                             <input type="hidden" name="zone_id" value="<?php echo (int)$z['id']; ?>">
-                                            <button type="submit" class="zone-tag" title="Retirer cette zone"><?php echo htmlspecialchars($z['nom']); ?> ×</button>
+                                            <button type="submit" class="zone-tag" title="Retirer cette zone"><?php echo htmlspecialchars($z['nom']); ?> x</button>
                                         </form>
                                     <?php endforeach; ?>
                                 </div>
                             <?php else: ?>
-                                <p class="module-zone">Non associé</p>
+                                <p class="module-zone">Non associe</p>
                             <?php endif; ?>
                         </div>
                     </div>
 
                     <div class="status-row">
                         <span class="connection-pill <?php echo $connectionClass; ?>">
-                            <?php echo $module['is_online'] ? '●' : '⚠'; ?>
+                            <?php echo $module['is_online'] ? 'o' : '!'; ?>
                             <?php echo $connectionText; ?>
                         </span>
                         <span class="signal-label">Signal: <?php echo htmlspecialchars(formatSecondsAgo($module['secondes_depuis_signal'])); ?></span>
@@ -451,28 +458,19 @@ function formatSecondsAgo(?int $seconds): string
                     <div class="module-meta">
                         <div><strong>IP:</strong> <?php echo htmlspecialchars($module['ip_address'] !== '' ? $module['ip_address'] : '--'); ?></div>
                         <div><strong>Dernier signal:</strong> <?php echo htmlspecialchars(formatLastSignal($module['dernier_signal'])); ?></div>
+                        <div><strong>Derniere activite:</strong> <?php echo htmlspecialchars((string)($module['derniere_activite'] ?? '--')); ?></div>
                     </div>
-
-                    <?php if (!empty($alerts)): ?>
-                        <ul class="alert-list">
-                            <?php foreach ($alerts as $alert): ?>
-                                <li class="alert-item <?php echo htmlspecialchars((string)$alert['niveau']); ?>">
-                                    <?php echo htmlspecialchars((string)$alert['message']); ?>
-                                </li>
-                            <?php endforeach; ?>
-                        </ul>
-                    <?php endif; ?>
 
                     <div class="esp-card-bottom">
                         <div class="card-actions">
                             <form method="POST" class="inline-form">
                                 <input type="hidden" name="action" value="disconnect_module">
                                 <input type="hidden" name="module_id" value="<?php echo (int)$module['id']; ?>">
-                                <button class="small-action-btn" type="submit" <?php echo $isAssigned ? '' : 'disabled'; ?>>Tout désassocier</button>
+                                <button class="small-action-btn" type="submit" <?php echo $isAssigned ? '' : 'disabled'; ?>>Tout desassocier</button>
                             </form>
 
                             <?php if ($canAddModule): ?>
-                                <form method="POST" class="inline-form" onsubmit="return confirm('Supprimer définitivement ce module ?');">
+                                <form method="POST" class="inline-form" onsubmit="return confirm('Supprimer definitivement ce module ?');">
                                     <input type="hidden" name="action" value="delete_module">
                                     <input type="hidden" name="module_id" value="<?php echo (int)$module['id']; ?>">
                                     <button class="small-action-btn" type="submit">Supprimer</button>
@@ -532,9 +530,9 @@ function formatSecondsAgo(?int $seconds): string
         <div class="esp-modal">
             <button class="esp-modal-close" type="button" data-close-modal="assignZoneModal">&times;</button>
             <h2>Ajouter une ou plusieurs zones</h2>
-            <p class="help" id="assignHelpText">Sélectionnez une ou plusieurs zones à associer.</p>
+            <p class="help" id="assignHelpText">Selectionnez une ou plusieurs zones a associer.</p>
             <div id="assignCurrentZones" style="margin-bottom:12px;display:none;">
-                <p style="font-size:12px;font-weight:700;color:#555;margin-bottom:6px;">Zones déjà associées :</p>
+                <p style="font-size:12px;font-weight:700;color:#555;margin-bottom:6px;">Zones deja associees :</p>
                 <div id="assignCurrentZonesList" class="zone-tags"></div>
             </div>
 
@@ -542,7 +540,7 @@ function formatSecondsAgo(?int $seconds): string
                 <input type="hidden" name="action" value="assign_module_zone">
                 <input type="hidden" name="module_id" id="assignModuleIdInput" value="">
 
-                <label for="assignZoneSelect">Zones à associer</label>
+                <label for="assignZoneSelect">Zones a associer</label>
                 <select id="assignZoneSelect" name="zone_ids[]" <?php echo empty($zones) ? 'disabled' : ''; ?> required multiple size="6">
                     <?php foreach ($zones as $zone): ?>
                         <option value="<?php echo (int)$zone['id_zone']; ?>"><?php echo htmlspecialchars((string)$zone['nom_zone']); ?></option>
@@ -582,7 +580,7 @@ function formatSecondsAgo(?int $seconds): string
                 const assignedIds = new Set(zones.map(z => String(z.id)));
 
                 if (assignModuleIdInput) assignModuleIdInput.value = moduleId;
-                if (assignHelpText) assignHelpText.textContent = `Ajouter une ou plusieurs zones à ${moduleName}.`;
+                if (assignHelpText) assignHelpText.textContent = `Ajouter une ou plusieurs zones a ${moduleName}.`;
 
                 if (assignCurrentZonesList) {
                     assignCurrentZonesList.innerHTML = zones.length

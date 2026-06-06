@@ -111,11 +111,7 @@ $teacherNames = fetchTeacherNames($pdo);
     <div class="modal-group">
       <label for="teacher">Nom du professeur</label>
       <input type="text" id="teacher" list="teacherSuggestionsRadio" placeholder="Ex : Mme Dupont" autocomplete="off">
-      <datalist id="teacherSuggestionsRadio">
-        <?php foreach ($teacherNames as $teacherName): ?>
-          <option value="<?php echo htmlspecialchars((string)$teacherName); ?>"></option>
-        <?php endforeach; ?>
-      </datalist>
+      <datalist id="teacherSuggestionsRadio"></datalist>
     </div>
 
     <div class="modal-group">
@@ -161,6 +157,7 @@ const nextWeekBtn     = document.getElementById("nextWeekBtn");
 const todayBtn        = document.getElementById("todayBtn");
 const modal           = document.getElementById("modal");
 const teacherInput    = document.getElementById("teacher");
+const teacherSuggestionsList = document.getElementById("teacherSuggestionsRadio");
 const durationSelect  = document.getElementById("duration");
 const slotInfo        = document.getElementById("slotInfo");
 const confirmBtn      = document.getElementById("confirmBtn");
@@ -172,6 +169,7 @@ const cancelModalClose = document.getElementById("cancelModalClose");
 const confirmCancelBtn = document.getElementById("confirmCancelBtn");
 const isProf  = CURRENT_ROLE === 3;
 const isAdmin = [1, 4].includes(CURRENT_ROLE);
+const teacherNames = <?php echo json_encode(array_values($teacherNames), JSON_UNESCAPED_UNICODE); ?>;
 
 const colors = ["#ff6b6b","#4dabf7","#51cf66","#fcc419","#845ef7","#ff922b","#e74c3c","#1abc9c","#9b59b6","#f39c12"];
 const teacherColors = {};
@@ -185,6 +183,31 @@ let weekDays = [];
 let weekDayLabelByIso = {};
 let historyLoaded = false;
 let historyExpanded = false;
+
+function updateTeacherSuggestions(inputValue) {
+  if (!teacherSuggestionsList) return;
+  const query = inputValue.trim().toLowerCase();
+  teacherSuggestionsList.innerHTML = "";
+  if (query === "") return;
+
+  const matches = teacherNames
+    .filter(name => name.toLowerCase().includes(query))
+    .slice(0, 12);
+
+  matches.forEach((name) => {
+    const option = document.createElement("option");
+    option.value = name;
+    teacherSuggestionsList.appendChild(option);
+  });
+}
+
+teacherInput.addEventListener("input", () => updateTeacherSuggestions(teacherInput.value));
+teacherInput.addEventListener("focus", () => updateTeacherSuggestions(teacherInput.value));
+teacherInput.addEventListener("blur", () => {
+  window.setTimeout(() => {
+    teacherSuggestionsList.innerHTML = "";
+  }, 120);
+});
 
 // ── Toast ─────────────────────────────────────────
 function showToast(message, type = "info") {

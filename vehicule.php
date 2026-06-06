@@ -191,11 +191,7 @@ $teacherNames = fetchTeacherNames($pdo);
       <div class="modal-group">
         <label for="teacherName">Nom du professeur</label>
         <input type="text" id="teacherName" list="teacherSuggestionsVehicule" placeholder="Ex : Mme Dupont" autocomplete="off">
-        <datalist id="teacherSuggestionsVehicule">
-          <?php foreach ($teacherNames as $teacherName): ?>
-            <option value="<?php echo htmlspecialchars((string)$teacherName); ?>"></option>
-          <?php endforeach; ?>
-        </datalist>
+        <datalist id="teacherSuggestionsVehicule"></datalist>
       </div>
 
       <div class="modal-group">
@@ -243,6 +239,7 @@ $teacherNames = fetchTeacherNames($pdo);
     const reservationModal = document.getElementById("reservationModal");
     const selectedSlotInfo = document.getElementById("selectedSlotInfo");
     const teacherNameInput = document.getElementById("teacherName");
+    const teacherSuggestionsList = document.getElementById("teacherSuggestionsVehicule");
     const durationSelect   = document.getElementById("durationSelect");
     const cancelReservation  = document.getElementById("cancelReservation");
     const confirmReservation = document.getElementById("confirmReservation");
@@ -256,6 +253,7 @@ $teacherNames = fetchTeacherNames($pdo);
     const times = ["8h35", "9h35", "10h45", "11h45", "13h15", "14h15", "15h25", "16h25", "17h20"];
     const teacherColors = {};
     const colorPalette = ["#e74c3c","#3498db","#27ae60","#f39c12","#9b59b6","#1abc9c","#e67e22","#2ecc71","#34495e","#d35400","#8e44ad","#16a085"];
+    const teacherNames = <?php echo json_encode(array_values($teacherNames), JSON_UNESCAPED_UNICODE); ?>;
     const isProf  = CURRENT_ROLE === 3;
     const isAdmin = [1, 4].includes(CURRENT_ROLE);
 
@@ -268,6 +266,31 @@ $teacherNames = fetchTeacherNames($pdo);
     let weekDayLabelByIso = {};
     let historyLoaded = false;
     let historyExpanded = false;
+
+    function updateTeacherSuggestions(inputValue) {
+      if (!teacherSuggestionsList) return;
+      const query = inputValue.trim().toLowerCase();
+      teacherSuggestionsList.innerHTML = "";
+      if (query === "") return;
+
+      const matches = teacherNames
+        .filter(name => name.toLowerCase().includes(query))
+        .slice(0, 12);
+
+      matches.forEach((name) => {
+        const option = document.createElement("option");
+        option.value = name;
+        teacherSuggestionsList.appendChild(option);
+      });
+    }
+
+    teacherNameInput.addEventListener("input", () => updateTeacherSuggestions(teacherNameInput.value));
+    teacherNameInput.addEventListener("focus", () => updateTeacherSuggestions(teacherNameInput.value));
+    teacherNameInput.addEventListener("blur", () => {
+      window.setTimeout(() => {
+        teacherSuggestionsList.innerHTML = "";
+      }, 120);
+    });
     let selectedVehicle = "Renault";
     let calYear  = new Date().getFullYear();
     let calMonth = new Date().getMonth();
